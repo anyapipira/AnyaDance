@@ -113,8 +113,8 @@ void RenderUi(HWND hwnd) {
     // T-pose and stops any MMD playback; the two presets apply through RestorePose
     // (which also stops playback) and leave finger bends untouched.
     const float poseButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
-    // Posed presets in gold; Reset (return to the neutral T-pose) in blue so it
-    // reads apart from the two stances on either side.
+    // Posed presets use the primary tint; Reset (return to the neutral T-pose) uses
+    // the secondary tint so it reads apart from the two stances on either side.
     {
         ScopedButtonColor tint(col::Primary);
         if (ImGui::Button(Tr(Text::PoseStanding), ImVec2(poseButtonWidth, 44))) {
@@ -154,7 +154,7 @@ void RenderUi(HWND hwnd) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         {
-            ScopedButtonColor tint(col::Primary);  // Save = gold (writes out)
+            ScopedButtonColor tint(col::Primary);  // Save = primary (writes out)
             if (ImGui::Button(Tr(Text::PoseSave), ImVec2(-1.0f, 0.0f))) {
                 const std::string path = SaveFileDialog(hwnd, Tr(Text::PoseSave), "AnyaDance (*.nya)", "*.nya", "nya");
                 if (!path.empty() && !WriteFileUtf8(path, SerializeNya(MakePoseClip(FrameWithCurrentFingerBends())))) {
@@ -164,7 +164,7 @@ void RenderUi(HWND hwnd) {
         }
         ImGui::TableSetColumnIndex(1);
         {
-            ScopedButtonColor tint(col::Secondary);  // Load = blue (reads in)
+            ScopedButtonColor tint(col::Secondary);  // Load = secondary (reads in)
             if (ImGui::Button(Tr(Text::PoseLoad), ImVec2(-1.0f, 0.0f))) {
                 const std::string path = OpenFileDialog(hwnd, Tr(Text::PoseLoad), "AnyaDance (*.nya)", "*.nya");
                 if (!path.empty()) {
@@ -184,8 +184,8 @@ void RenderUi(HWND hwnd) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         const float systemButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
-        // Driver controls: Register (gold), Unregister (blue), and the disruptive
-        // Restart (red).
+        // Driver controls: Register (primary), Unregister (secondary), and the
+        // disruptive Restart (tertiary).
         {
             ScopedButtonColor tint(col::Primary);
             if (ImGui::Button(Tr(Text::RegisterDriver), ImVec2(systemButtonWidth, 0.0f))) {

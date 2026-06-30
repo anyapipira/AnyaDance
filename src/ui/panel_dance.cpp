@@ -337,7 +337,7 @@ void RenderDanceDialog(HWND hwnd) {
     // Play stays disabled until a solve (or a loaded clip) is ready and (re)starts
     // from the top; Pause/Resume freezes and continues in place; Stop settles into
     // the standing pose; the Loop checkbox fills the last cell of the row. Play is
-    // the primary action; Pause/Stop are secondary.
+    // primary, Pause secondary, and Stop the tertiary (stop/destructive) tint.
     const float quadWidth = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x * 3.0f) / 4.0f;
     ImGui::BeginDisabled(g_app.danceConverting || !g_app.danceMotion.valid);
     {
@@ -376,8 +376,8 @@ void RenderDanceDialog(HWND hwnd) {
     // Save the analyzed motion as a .nya clip, or load one to play directly. A
     // loaded clip skips both Blender and the remap, so Play is ready immediately.
     const float halfWidth = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x) / 2.0f;
-    // Save (gold) / Load (blue), matching the pose Save/Load pair. Each tint closes
-    // before EndPopup so the ImGui color stack stays balanced at the popup boundary.
+    // Save (primary) / Load (secondary), matching the pose Save/Load pair. Each tint
+    // closes before EndPopup so the ImGui color stack stays balanced at the boundary.
     ImGui::BeginDisabled(!g_app.danceMotion.valid);
     {
         ScopedButtonColor tint(col::Primary);

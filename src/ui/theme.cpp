@@ -32,7 +32,7 @@ void ApplyAnyaTheme() {
     s.FramePadding = ImVec2(8.0f, 5.0f);
     s.ItemSpacing = ImVec2(8.0f, 6.0f);
 
-    // Indigo night-sky base with a gold accent (matches the Project Anya banner).
+    // Indigo night-sky base with a cool sky-blue accent.
     const ImVec4 bg{0.075f, 0.071f, 0.110f, 1.00f};
     const ImVec4 bgLight{0.130f, 0.125f, 0.190f, 1.00f};
     const ImVec4 bgLift{0.170f, 0.162f, 0.240f, 1.00f};

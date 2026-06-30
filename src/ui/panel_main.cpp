@@ -113,13 +113,17 @@ void RenderUi(HWND hwnd) {
     // T-pose and stops any MMD playback; the two presets apply through RestorePose
     // (which also stops playback) and leave finger bends untouched.
     const float poseButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
+    // Posed presets in gold; Reset (return to the neutral T-pose) in blue so it
+    // reads apart from the two stances on either side.
     {
-        // The three pose buttons are the hero row (primary).
         ScopedButtonColor tint(col::Primary);
         if (ImGui::Button(Tr(Text::PoseStanding), ImVec2(poseButtonWidth, 44))) {
             RestorePose(MakeStandingPose(), En(Text::PoseStanding));
         }
-        ImGui::SameLine();
+    }
+    ImGui::SameLine();
+    {
+        ScopedButtonColor tint(col::Secondary);
         if (ImGui::Button(Tr(Text::Reset), ImVec2(poseButtonWidth, 44))) {
             StopDanceToTPose();  // a manual reset also stops any MMD playback
             g_app.keyboard.Neutralize();
@@ -127,7 +131,10 @@ void RenderUi(HWND hwnd) {
             g_app.fingerBends[1] = FingerBends{};
             g_app.streamer.UpdateFrame(g_app.frame, En(Text::ResetReason), false);
         }
-        ImGui::SameLine();
+    }
+    ImGui::SameLine();
+    {
+        ScopedButtonColor tint(col::Primary);
         if (ImGui::Button(Tr(Text::PoseMenu), ImVec2(poseButtonWidth, 44))) {
             RestorePose(MakeMenuPose(), En(Text::PoseMenu));
         }
@@ -145,17 +152,19 @@ void RenderUi(HWND hwnd) {
         // load one back. A pose is a one-frame clip, so it shares the format with
         // dances.
         ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
         {
-            // Save/Load are utility actions (secondary).
-            ScopedButtonColor fileTint(col::Secondary);
-            ImGui::TableSetColumnIndex(0);
+            ScopedButtonColor tint(col::Primary);  // Save = gold (writes out)
             if (ImGui::Button(Tr(Text::PoseSave), ImVec2(-1.0f, 0.0f))) {
                 const std::string path = SaveFileDialog(hwnd, Tr(Text::PoseSave), "AnyaDance (*.nya)", "*.nya", "nya");
                 if (!path.empty() && !WriteFileUtf8(path, SerializeNya(MakePoseClip(FrameWithCurrentFingerBends())))) {
                     MessageBoxA(hwnd, "Could not write the .nya file.", "AnyaDance", MB_OK | MB_ICONWARNING);
                 }
             }
-            ImGui::TableSetColumnIndex(1);
+        }
+        ImGui::TableSetColumnIndex(1);
+        {
+            ScopedButtonColor tint(col::Secondary);  // Load = blue (reads in)
             if (ImGui::Button(Tr(Text::PoseLoad), ImVec2(-1.0f, 0.0f))) {
                 const std::string path = OpenFileDialog(hwnd, Tr(Text::PoseLoad), "AnyaDance (*.nya)", "*.nya");
                 if (!path.empty()) {
@@ -175,17 +184,24 @@ void RenderUi(HWND hwnd) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         const float systemButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
-        // Driver/system controls are utility actions (secondary).
+        // Driver controls: Register (gold), Unregister (blue), and the disruptive
+        // Restart (red).
         {
-            ScopedButtonColor tint(col::Secondary);
+            ScopedButtonColor tint(col::Primary);
             if (ImGui::Button(Tr(Text::RegisterDriver), ImVec2(systemButtonWidth, 0.0f))) {
                 recordStatus(RegisterDriver());
             }
-            ImGui::SameLine();
+        }
+        ImGui::SameLine();
+        {
+            ScopedButtonColor tint(col::Secondary);
             if (ImGui::Button(Tr(Text::UnregisterDriver), ImVec2(systemButtonWidth, 0.0f))) {
                 recordStatus(UnregisterDriver());
             }
-            ImGui::SameLine();
+        }
+        ImGui::SameLine();
+        {
+            ScopedButtonColor tint(col::Tertiary);
             if (ImGui::Button(Tr(Text::RestartSteamVr), ImVec2(systemButtonWidth, 0.0f))) {
                 restartConfirmRequested = true;
             }
@@ -211,12 +227,15 @@ void RenderUi(HWND hwnd) {
         ImGui::PopTextWrapPos();
         ImGui::Spacing();
         {
-            ScopedButtonColor tint(col::Secondary);
+            ScopedButtonColor tint(col::Tertiary);
             if (ImGui::Button(Tr(Text::RestartSteamVr), ImVec2(160.0f, 0.0f))) {
                 recordStatus(RestartSteamVR());
                 ImGui::CloseCurrentPopup();
             }
-            ImGui::SameLine();
+        }
+        ImGui::SameLine();
+        {
+            ScopedButtonColor tint(col::Secondary);
             if (ImGui::Button(Tr(Text::Cancel), ImVec2(120.0f, 0.0f))) {
                 ImGui::CloseCurrentPopup();
             }

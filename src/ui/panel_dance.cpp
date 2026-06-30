@@ -364,7 +364,7 @@ void RenderDanceDialog(HWND hwnd) {
     ImGui::SameLine();
     ImGui::BeginDisabled(!g_app.dancePlaying);
     {
-        ScopedButtonColor tint(col::Secondary);
+        ScopedButtonColor tint(col::Tertiary);
         if (ImGui::Button(Tr(Text::DanceStop), ImVec2(quadWidth, 0.0f))) {
             StopDancePlayback();
         }
@@ -376,11 +376,11 @@ void RenderDanceDialog(HWND hwnd) {
     // Save the analyzed motion as a .nya clip, or load one to play directly. A
     // loaded clip skips both Blender and the remap, so Play is ready immediately.
     const float halfWidth = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x) / 2.0f;
-    // Save/Load dance clips are secondary (teal). The tint must close before
-    // EndPopup so the ImGui color stack stays balanced at the popup boundary.
+    // Save (gold) / Load (blue), matching the pose Save/Load pair. Each tint closes
+    // before EndPopup so the ImGui color stack stays balanced at the popup boundary.
+    ImGui::BeginDisabled(!g_app.danceMotion.valid);
     {
-        ScopedButtonColor danceFileTint(col::Secondary);
-        ImGui::BeginDisabled(!g_app.danceMotion.valid);
+        ScopedButtonColor tint(col::Primary);
         if (ImGui::Button(Tr(Text::DanceSaveNya), ImVec2(halfWidth, 0.0f))) {
             const std::string path = SaveFileDialog(hwnd, Tr(Text::DanceSaveNya), "AnyaDance (*.nya)", "*.nya", "nya");
             if (!path.empty()) {
@@ -391,8 +391,11 @@ void RenderDanceDialog(HWND hwnd) {
                                         : std::string("Could not write the .nya file.");
             }
         }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    {
+        ScopedButtonColor tint(col::Secondary);
         if (ImGui::Button(Tr(Text::DanceLoadNya), ImVec2(halfWidth, 0.0f))) {
             const std::string path = OpenFileDialog(hwnd, Tr(Text::DanceLoadNya), "AnyaDance (*.nya)", "*.nya");
             if (!path.empty()) {

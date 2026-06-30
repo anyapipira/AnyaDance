@@ -109,23 +109,23 @@ void RenderUi(HWND hwnd) {
     RenderUiModeControls(hwnd, true);
     ImGui::Separator();
 
-    if (ImGui::Button(Tr(Text::Reset), ImVec2(-1, 44))) {
+    // Pose row: Standing Pose | Reset to T-Pose | Menu Pose. Reset rebuilds the
+    // T-pose and stops any MMD playback; the two presets apply through RestorePose
+    // (which also stops playback) and leave finger bends untouched.
+    const float poseButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
+    if (ImGui::Button(Tr(Text::PoseStanding), ImVec2(poseButtonWidth, 44))) {
+        RestorePose(MakeStandingPose(), En(Text::PoseStanding));
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(Tr(Text::Reset), ImVec2(poseButtonWidth, 44))) {
         StopDanceToTPose();  // a manual reset also stops any MMD playback
         g_app.keyboard.Neutralize();
         g_app.fingerBends[0] = FingerBends{};
         g_app.fingerBends[1] = FingerBends{};
         g_app.streamer.UpdateFrame(g_app.frame, En(Text::ResetReason), false);
     }
-
-    // Canned full-body pose presets. Like Load Pose, these apply device poses
-    // through RestorePose (which also stops any MMD playback) and leave finger
-    // bends untouched.
-    const float poseButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) / 2.0f;
-    if (ImGui::Button(Tr(Text::PoseStanding), ImVec2(poseButtonWidth, 0.0f))) {
-        RestorePose(MakeStandingPose(), En(Text::PoseStanding));
-    }
     ImGui::SameLine();
-    if (ImGui::Button(Tr(Text::PoseMenu), ImVec2(poseButtonWidth, 0.0f))) {
+    if (ImGui::Button(Tr(Text::PoseMenu), ImVec2(poseButtonWidth, 44))) {
         RestorePose(MakeMenuPose(), En(Text::PoseMenu));
     }
 

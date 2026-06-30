@@ -39,6 +39,10 @@ AnyaDance 作为 **Project Anya**（由 Pipira 开发的更大型项目）的一
 
 - Windows 10 或更高版本
 - 已安装 SteamVR
+- [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022 (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+
+从源代码构建还需要：
+
 - Visual Studio 2022 或带有“使用 C++ 的桌面开发”工作负载的 Visual Studio 生成工具
 - CMake 3.22 或更高版本
 - 默认首次构建需要网络访问，除非提供了本地依赖路径
@@ -47,6 +51,15 @@ AnyaDance 作为 **Project Anya**（由 Pipira 开发的更大型项目）的一
 
 - Valve OpenVR SDK `2.2.3`
 - Dear ImGui `v1.90.9`
+
+## 安装发布版本
+
+1. 从 [GitHub Releases](https://github.com/anyapipira/AnyaDance/releases) 页面下载 `AnyaDance-<版本>-windows-x64.zip`。
+2. 将完整的 `anyadance` 文件夹解压到固定位置。请勿直接从 ZIP 内运行程序；驱动处于注册状态时，也不要移动或删除该文件夹。
+3. 运行 `AnyaDance.exe`，阅读并接受免责声明，然后点击 **注册驱动**。
+4. 点击 **重启 SteamVR**。SteamVR 将以全虚拟模式启动，并使用 AnyaDance 的头显、控制器和追踪器。
+
+使用完毕后，请先点击 **取消注册驱动** 并重启 SteamVR，再移动或删除该文件夹。这样会还原 SteamVR 设置备份，并恢复真实设备追踪。详见[安装](docs/installation.zh-CN.md)。
 
 ## 构建
 
@@ -71,7 +84,7 @@ build\out\anyadance\README.zh-CN.md
 build\out\AnyaDance.zip
 ```
 
-UI 程序就放在驱动文件夹内，因此 `build\out\anyadance\` 即为一个自包含、可直接分发的目录，
+UI 程序就放在驱动文件夹内，因此 `build\out\anyadance\` 即为一个可直接分发的目录，
 构建时还会将其打包为 `build\out\AnyaDance.zip`，可直接发给他人。
 exe 会将自身所在的文件夹注册为 SteamVR 驱动，OpenVR 便能在其旁边找到
 `driver.vrdrivermanifest` 与 `bin\win64\driver_anyadance.dll`。OpenVR 始终从

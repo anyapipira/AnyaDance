@@ -39,6 +39,10 @@ The code builds and its automated tests pass on Windows with Visual Studio 2022.
 
 - Windows 10 or newer
 - SteamVR installed
+- [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022 (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+
+Building from source additionally requires:
+
 - Visual Studio 2022 or Visual Studio Build Tools with Desktop development with C++
 - CMake 3.22 or newer
 - Network access for the default first build, unless local dependency paths are supplied
@@ -47,6 +51,15 @@ Pinned dependencies:
 
 - Valve OpenVR SDK `2.2.3`
 - Dear ImGui `v1.90.9`
+
+## Install A Release
+
+1. Download `AnyaDance-<version>-windows-x64.zip` from the [GitHub Releases](https://github.com/anyapipira/AnyaDance/releases) page.
+2. Extract the complete `anyadance` folder to a permanent location. Do not run the executable from inside the ZIP, and do not move or delete the folder while its driver is registered.
+3. Run `AnyaDance.exe`, review and accept the disclaimer, then click **Register Driver**.
+4. Click **Restart SteamVR**. SteamVR will start in fully virtual mode with the AnyaDance HMD, controllers, and trackers.
+
+When finished, click **Unregister Driver** and restart SteamVR before moving or deleting the folder. This restores the SteamVR settings backup and returns SteamVR to real-device tracking. See [Installation](docs/installation.md) for details.
 
 ## Build
 
@@ -72,7 +85,7 @@ build\out\AnyaDance.zip
 ```
 
 The UI ships inside the driver folder, so `build\out\anyadance\` is one
-self-contained, shippable bundle with the license/notices, and the build also zips it into
+shippable bundle with the license/notices, and the build also zips it into
 `build\out\AnyaDance.zip` to hand to others directly. The exe registers its own folder as the SteamVR
 driver, so OpenVR finds `driver.vrdrivermanifest` and `bin\win64\driver_anyadance.dll`
 beside it. OpenVR loads the driver DLL from `bin\win64\`, with the manifest at

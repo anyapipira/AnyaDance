@@ -2,9 +2,21 @@
 
 [English](installation.md) | **简体中文**
 
-## 注册驱动
+## 安装发布版本
 
-先构建，然后注册暂存的驱动文件夹：
+环境要求：
+
+- Windows 10 或更高版本
+- SteamVR
+- [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022 (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+
+从 [GitHub Releases](https://github.com/anyapipira/AnyaDance/releases) 下载 `AnyaDance-<版本>-windows-x64.zip`，然后将完整的 `anyadance` 文件夹解压到固定位置。请勿直接从 ZIP 内运行 `AnyaDance.exe`。
+
+运行 `AnyaDance.exe`，接受免责声明，然后依次点击 **注册驱动** 和 **重启 SteamVR**。应用会注册其自身所在的文件夹，因此驱动处于注册状态时不要移动或删除该文件夹。
+
+## 从源代码安装
+
+先构建，然后使用应用内的 **注册驱动** 与 **重启 SteamVR** 按钮，或运行：
 
 ```powershell
 .\scripts\build_driver.ps1
@@ -44,6 +56,10 @@ requireHmd = true
 更改注册或启动设置后需要重启 SteamVR。
 
 ## 取消注册
+
+如果使用发布版本，请在应用中依次点击 **取消注册驱动** 与 **重启 SteamVR**。移动或删除解压后的文件夹前必须先完成此操作。
+
+如果从源代码安装，对应的脚本为：
 
 ```powershell
 .\scripts\unregister_driver.ps1

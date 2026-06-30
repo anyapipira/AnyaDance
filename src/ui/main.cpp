@@ -560,7 +560,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     io.FontDefault = g_uiFont;
     g_monoFont = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", 13.0f);
 
-    ImGui::StyleColorsDark();
+    ApplyAnyaTheme();
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_device, g_deviceContext);
 

@@ -26,6 +26,7 @@
 #include "ui/driver_control.h"
 #include "ui/localization.h"
 #include "ui/mmd_dance.h"
+#include "ui/theme.h"
 
 #include "imgui.h"
 

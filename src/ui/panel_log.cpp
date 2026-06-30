@@ -142,7 +142,9 @@ void RenderLogPanel() {
             ImGui::TableSetColumnIndex(1);
             ImGui::TextUnformatted(entry.reason.c_str());
             ImGui::TableSetColumnIndex(2);
-            ImGui::TextUnformatted(entry.result.c_str());
+            // Green for a delivered datagram, red for any failure/socket error.
+            const bool ok = entry.result == En(Text::Sent);
+            ImGui::TextColored(ok ? col::Green : col::Red, "%s", entry.result.c_str());
         }
         // Follow the newest row while "Scroll to latest" is checked. Clicking a
         // log entry unchecks it (see above), so inspecting an older row is not

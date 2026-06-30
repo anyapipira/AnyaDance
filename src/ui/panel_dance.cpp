@@ -301,8 +301,11 @@ void RenderDanceDialog(HWND hwnd) {
 
     // Analyze runs the Blender solve and lives right under the inputs it consumes.
     ImGui::BeginDisabled(g_app.danceConverting);
-    if (ImGui::Button(Tr(Text::DanceAnalyze), ImVec2(-1.0f, 0.0f))) {
-        StartDanceExport();
+    {
+        ScopedButtonColor tint(col::Rose);
+        if (ImGui::Button(Tr(Text::DanceAnalyze), ImVec2(-1.0f, 0.0f))) {
+            StartDanceExport();
+        }
     }
     ImGui::EndDisabled();
 
@@ -332,29 +335,39 @@ void RenderDanceDialog(HWND hwnd) {
     ImGui::EndDisabled();
 
     // Play stays disabled until a solve (or a loaded clip) is ready and (re)starts
-    // from the top; Pause/Resume freezes and continues in place; Stop returns to the
-    // T-pose; the Loop checkbox fills the last cell of the row.
+    // from the top; Pause/Resume freezes and continues in place; Stop settles into
+    // the standing pose; the Loop checkbox fills the last cell of the row. Transport
+    // colors follow the media convention: go (green), hold (amber), stop (danger).
     const float quadWidth = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x * 3.0f) / 4.0f;
     ImGui::BeginDisabled(g_app.danceConverting || !g_app.danceMotion.valid);
-    if (ImGui::Button(Tr(Text::DancePlay), ImVec2(quadWidth, 0.0f))) {
-        StartDancePlayback();
-    }
-    ImGui::EndDisabled();
-    ImGui::SameLine();
-    ImGui::BeginDisabled(!g_app.dancePlaying);
-    if (ImGui::Button(g_app.dancePaused ? Tr(Text::DanceResume) : Tr(Text::DancePause),
-                      ImVec2(quadWidth, 0.0f))) {
-        if (g_app.dancePaused) {
-            ResumeDancePlayback();
-        } else {
-            PauseDancePlayback();
+    {
+        ScopedButtonColor tint(col::Green);
+        if (ImGui::Button(Tr(Text::DancePlay), ImVec2(quadWidth, 0.0f))) {
+            StartDancePlayback();
         }
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::BeginDisabled(!g_app.dancePlaying);
-    if (ImGui::Button(Tr(Text::DanceStop), ImVec2(quadWidth, 0.0f))) {
-        StopDancePlayback();
+    {
+        ScopedButtonColor tint(col::Amber);
+        if (ImGui::Button(g_app.dancePaused ? Tr(Text::DanceResume) : Tr(Text::DancePause),
+                          ImVec2(quadWidth, 0.0f))) {
+            if (g_app.dancePaused) {
+                ResumeDancePlayback();
+            } else {
+                PauseDancePlayback();
+            }
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!g_app.dancePlaying);
+    {
+        ScopedButtonColor tint(col::Danger);
+        if (ImGui::Button(Tr(Text::DanceStop), ImVec2(quadWidth, 0.0f))) {
+            StopDancePlayback();
+        }
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
@@ -363,6 +376,9 @@ void RenderDanceDialog(HWND hwnd) {
     // Save the analyzed motion as a .nya clip, or load one to play directly. A
     // loaded clip skips both Blender and the remap, so Play is ready immediately.
     const float halfWidth = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x) / 2.0f;
+    // Save/Load dance clips share the warm file accent (no buttons follow in this
+    // dialog, so the tint can run to the end of the popup).
+    ScopedButtonColor danceFileTint(col::Amber);
     ImGui::BeginDisabled(!g_app.danceMotion.valid);
     if (ImGui::Button(Tr(Text::DanceSaveNya), ImVec2(halfWidth, 0.0f))) {
         const std::string path = SaveFileDialog(hwnd, Tr(Text::DanceSaveNya), "AnyaDance (*.nya)", "*.nya", "nya");

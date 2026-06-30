@@ -58,12 +58,22 @@ void DeviceBox(HWND hwnd, DeviceIndex deviceIndex, ImVec2 size, bool miniMode = 
     const ImVec2 min = ImGui::GetItemRectMin();
     const ImVec2 max = ImGui::GetItemRectMax();
     ImDrawList* draw = ImGui::GetWindowDrawList();
-    const ImU32 bg = IM_COL32(38, 43, 48, 128);
-    const ImU32 border = hovered ? IM_COL32(76, 154, 255, 255) : IM_COL32(83, 91, 102, 255);
+    // Region accent (head/hands/hip/feet) tints the card so the body reads at a
+    // glance: a dark accent-tinted fill, an accent border that brightens on hover,
+    // and the device name in a light accent.
+    const ImVec4 accent = DeviceRegionColor(deviceIndex);
+    const auto chan = [](float v) { return static_cast<int>(v * 255.0f + 0.5f); };
+    const ImU32 bg = IM_COL32(chan(accent.x * 0.22f + 0.10f), chan(accent.y * 0.22f + 0.10f),
+                              chan(accent.z * 0.22f + 0.12f), 150);
+    const ImU32 border = hovered
+        ? IM_COL32(chan(accent.x), chan(accent.y), chan(accent.z), 255)
+        : IM_COL32(chan(accent.x * 0.72f), chan(accent.y * 0.72f), chan(accent.z * 0.72f), 220);
+    const ImU32 nameCol = IM_COL32(chan(accent.x * 0.45f + 0.55f), chan(accent.y * 0.45f + 0.55f),
+                                   chan(accent.z * 0.45f + 0.55f), 255);
     draw->AddRectFilled(min, max, bg, 6.0f);
     draw->AddRect(min, max, border, 6.0f, 0, hovered ? 2.0f : 1.0f);
     ImVec2 textPos = ImVec2(min.x + 10.0f, min.y + 8.0f);
-    draw->AddText(textPos, IM_COL32(245, 247, 250, 255), DeviceName(slot));
+    draw->AddText(textPos, nameCol, DeviceName(slot));
     textPos.y += 20.0f;
     if (!miniMode) {
         const std::string pos = PoseSummary(device);

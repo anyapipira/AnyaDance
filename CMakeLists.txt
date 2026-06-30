@@ -163,6 +163,7 @@ if(ANYADANCE_BUILD_UI)
         src/ui/localization.cpp
         src/ui/driver_control.cpp
         src/ui/mmd_dance.cpp
+        src/ui/theme.cpp
         src/ui/ui.rc
     )
     target_include_directories(AnyaDanceUI PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")

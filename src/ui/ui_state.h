@@ -146,6 +146,7 @@ public:
                 return;
             }
             NeutralizeControllerInputs(m_frame);
+            m_pinnedPayload.clear();
             m_pendingReason = m_releaseReason;
             m_pendingManipulation = false;
             m_running = false;
@@ -173,6 +174,7 @@ public:
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_frame = frame;
+            m_pinnedPayload.clear();  // a new live pose supersedes a held resend
             if (!reason.empty()) {
                 m_pendingReason = std::move(reason);
                 m_pendingManipulation = manipulation;
@@ -207,6 +209,10 @@ public:
             m_log.Add(m_socketErrorReason, m_failedResult, payload, "WSA error " + std::to_string(error));
             return false;
         }
+        // Pin the resent datagram so the streaming loop keeps holding this pose
+        // instead of overwriting it with the live frame on the next tick. The next
+        // UpdateFrame (any pose change) clears the pin.
+        m_pinnedPayload = payload;
         m_log.Add(reason, m_sentResult, payload);
         return true;
     }
@@ -233,6 +239,7 @@ private:
             std::string reason;
             bool manipulation = false;
             bool shouldExit = false;
+            std::string pinnedPayload;
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
                 m_cv.wait_until(lock, nextSend, [this] { return !m_running || !m_pendingReason.empty(); });
@@ -242,11 +249,13 @@ private:
                 m_pendingReason.clear();
                 m_pendingManipulation = false;
                 shouldExit = !m_running;
+                pinnedPayload = m_pinnedPayload;
             }
 
             // Always send the latest pose; only write a log entry when a reason
-            // is attached so the 60 Hz idle stream does not flood the log.
-            const std::string payload = SerializeFrame(frame);
+            // is attached so the 60 Hz idle stream does not flood the log. While a
+            // resend is pinned, keep sending that exact datagram so the pose holds.
+            const std::string payload = pinnedPayload.empty() ? SerializeFrame(frame) : pinnedPayload;
             const int error = SendDatagram(payload);
             if (error != 0) {
                 std::lock_guard<std::mutex> logLock(m_logMutex);
@@ -278,6 +287,9 @@ private:
     bool m_running = false;
     std::string m_pendingReason;
     bool m_pendingManipulation = false;
+    // When non-empty, a resent datagram the loop keeps streaming verbatim so the
+    // avatar holds that pose. Cleared by the next UpdateFrame or by Stop.
+    std::string m_pinnedPayload;
     std::string m_sentResult = "Sent";
     std::string m_failedResult = "Failed";
     std::string m_socketErrorReason = "Socket error";

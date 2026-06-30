@@ -9,10 +9,13 @@ Vec3 OffsetFromHmd(Vec3 hmdPosition, float yaw, Vec3 localOffset) {
 
 } // namespace
 
-FrameState BuildResetTPose(const FrameState& current, TPoseConstants constants) {
+FrameState BuildResetTPose(const FrameState& /*current*/, TPoseConstants constants) {
     FrameState reset{};
-    const DeviceState& currentHmd = current.devices[DeviceSlot(DeviceIndex::Hmd)];
-    Vec3 resetHmdPosition{currentHmd.position.x, kResetHmdY, currentHmd.position.z};
+    // Build at tracking-space origin (X/Z = 0), not the current HMD position. The
+    // avatar's world position in VRChat is driven by locomotion, so anchoring the
+    // rig at origin keeps the local rig centered rather than carrying over whatever
+    // tracking-space offset the HMD happened to have.
+    Vec3 resetHmdPosition{0.0f, kResetHmdY, 0.0f};
     // Reset to a canonical forward-facing rig: zero the HMD yaw rather than keeping
     // the current heading. The avatar's yaw in VRChat is driven by locomotion, so
     // any leftover rig yaw here would desync the local rig from the in-game heading.

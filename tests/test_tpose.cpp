@@ -14,9 +14,10 @@ void TestTPose() {
     frame.devices[DeviceSlot(DeviceIndex::Hmd)].rotation = FromYaw(DegToRad(90.0f));
     FrameState reset = BuildResetTPose(frame);
     const DeviceState& hmd = reset.devices[DeviceSlot(DeviceIndex::Hmd)];
-    EXPECT_NEAR(hmd.position.x, 2.0f, 0.0001f);
+    // Reset anchors the rig at tracking-space origin, ignoring the input HMD X/Z.
+    EXPECT_NEAR(hmd.position.x, 0.0f, 0.0001f);
     EXPECT_NEAR(hmd.position.y, 1.50f, 0.0001f);
-    EXPECT_NEAR(hmd.position.z, -1.0f, 0.0001f);
+    EXPECT_NEAR(hmd.position.z, 0.0f, 0.0001f);
     // Reset zeroes the HMD yaw so the rig faces the canonical forward, regardless
     // of the input heading (the in-game yaw is driven by locomotion).
     EXPECT_SAME_ROTATION(hmd.rotation, FromYaw(0.0f));
@@ -38,13 +39,13 @@ void TestTPose() {
     const DeviceState& hip = reset.devices[DeviceSlot(DeviceIndex::Hip)];
     const DeviceState& leftFoot = reset.devices[DeviceSlot(DeviceIndex::LeftFoot)];
     const DeviceState& rightFoot = reset.devices[DeviceSlot(DeviceIndex::RightFoot)];
-    // With the heading zeroed, the rig is built at yaw 0, so offsets land in body
-    // space directly (HMD at x=2.0, z=-1.0).
-    EXPECT_VEC3_NEAR(left.position, (Vec3{1.38f, 1.33f, -1.10f}));
-    EXPECT_VEC3_NEAR(right.position, (Vec3{2.62f, 1.33f, -1.10f}));
-    EXPECT_VEC3_NEAR(hip.position, (Vec3{2.0f, 1.07f, -1.05f}));
-    EXPECT_VEC3_NEAR(leftFoot.position, (Vec3{1.91f, 0.26f, -0.90f}));
-    EXPECT_VEC3_NEAR(rightFoot.position, (Vec3{2.09f, 0.26f, -0.90f}));
+    // With the heading zeroed and the rig anchored at origin, offsets land in body
+    // space directly (HMD at x=0, z=0).
+    EXPECT_VEC3_NEAR(left.position, (Vec3{-0.62f, 1.33f, -0.10f}));
+    EXPECT_VEC3_NEAR(right.position, (Vec3{0.62f, 1.33f, -0.10f}));
+    EXPECT_VEC3_NEAR(hip.position, (Vec3{0.0f, 1.07f, -0.05f}));
+    EXPECT_VEC3_NEAR(leftFoot.position, (Vec3{-0.09f, 0.26f, 0.10f}));
+    EXPECT_VEC3_NEAR(rightFoot.position, (Vec3{0.09f, 0.26f, 0.10f}));
     EXPECT_NEAR(LengthSquared(left.rotation), 1.0f, 0.0001f);
     EXPECT_NEAR(LengthSquared(right.rotation), 1.0f, 0.0001f);
     EXPECT_SAME_ROTATION(left.rotation, kLeftControllerCanonicalRotation);

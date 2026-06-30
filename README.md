@@ -1,6 +1,8 @@
 # AnyaDance
 
-![AnyaDance main UI](docs/images/ui_main.png)
+<p>
+  <img src="docs/images/ui_main.png" alt="AnyaDance main UI" width="50%"><img src="docs/images/ui_mmd.png" alt="AnyaDance MMD UI" width="50%">
+</p>
 
 **English** | [简体中文](README.zh-CN.md)
 

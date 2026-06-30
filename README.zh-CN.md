@@ -1,6 +1,8 @@
 # AnyaDance
 
-![AnyaDance 主界面](docs/images/ui_main_zh.png)
+<p>
+  <img src="docs/images/ui_main_zh.png" alt="AnyaDance 主界面" width="50%"><img src="docs/images/ui_mmd_zh.png" alt="AnyaDance MMD 界面" width="50%">
+</p>
 
 [English](README.md) | **简体中文**
 

@@ -117,6 +117,18 @@ void RenderUi(HWND hwnd) {
         g_app.streamer.UpdateFrame(g_app.frame, En(Text::ResetReason), false);
     }
 
+    // Canned full-body pose presets. Like Load Pose, these apply device poses
+    // through RestorePose (which also stops any MMD playback) and leave finger
+    // bends untouched.
+    const float poseButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) / 2.0f;
+    if (ImGui::Button(Tr(Text::PoseStanding), ImVec2(poseButtonWidth, 0.0f))) {
+        RestorePose(MakeStandingPose(), En(Text::PoseStanding));
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(Tr(Text::PoseMenu), ImVec2(poseButtonWidth, 0.0f))) {
+        RestorePose(MakeMenuPose(), En(Text::PoseMenu));
+    }
+
     const auto recordStatus = [](const DriverActionResult& result) {
         g_app.driverStatusSet = true;
         g_app.driverStatus = result.status;

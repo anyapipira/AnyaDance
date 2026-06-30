@@ -99,6 +99,8 @@ enum class Text : std::size_t {
     DanceLoadNya,
     PoseSave,
     PoseLoad,
+    PoseStanding,
+    PoseMenu,
     Count,
 };
 

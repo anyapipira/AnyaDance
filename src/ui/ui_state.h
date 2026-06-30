@@ -379,7 +379,7 @@ void RenderUi(HWND hwnd);
 void RenderMiniUi(HWND hwnd);
 
 void StopDanceToTPose();
-void RestorePose(const FrameState& pose);
+void RestorePose(const FrameState& pose, const char* reason = "Pose restored");
 void PollDanceExport();
 void UpdateDancePlayback();
 

@@ -127,6 +127,8 @@ const char* const kStrings[kTextCount][kLanguageCount] = {
     /* DanceLoadNya          */ {"Load Dance", u8"加载舞蹈"},
     /* PoseSave              */ {"Save Pose", u8"保存姿势"},
     /* PoseLoad              */ {"Load Pose", u8"加载姿势"},
+    /* PoseStanding          */ {"Standing Pose", u8"站立姿势"},
+    /* PoseMenu              */ {"Menu Pose", u8"菜单姿势"},
 };
 
 static_assert(sizeof(kStrings) / sizeof(kStrings[0]) == kTextCount,

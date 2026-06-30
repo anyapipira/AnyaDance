@@ -150,7 +150,7 @@ void StopDancePlayback() {
 // (only mouse/reset/dance move them), while finger bends go through g_app.fingerBends
 // so the per-frame ApplyFingerBend keeps them instead of overwriting with the wheel
 // state. A restored pose takes over from any in-progress dance playback.
-void RestorePose(const FrameState& pose) {
+void RestorePose(const FrameState& pose, const char* reason) {
     g_app.dancePlaying = false;
     g_app.dancePaused = false;
     g_app.dancePausedElapsed = 0.0f;
@@ -165,7 +165,7 @@ void RestorePose(const FrameState& pose) {
             g_app.fingerBends[i] = pose.controllers[i].finger_bends;
         }
     }
-    g_app.streamer.UpdateFrame(FrameWithCurrentFingerBends(), "Pose restored", false);
+    g_app.streamer.UpdateFrame(FrameWithCurrentFingerBends(), reason, false);
 }
 
 // Pick up a finished Blender solve, retarget it, and report the outcome. Runs

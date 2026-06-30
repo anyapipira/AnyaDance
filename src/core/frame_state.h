@@ -39,6 +39,15 @@ struct FrameState {
 };
 
 FrameState MakeNeutralFrame();
+
+// Canned full-body poses selectable from the UI. Both face canonical forward and
+// are anchored at tracking-space origin (matching BuildResetTPose); only the
+// device poses are set, so finger bends are left to the caller.
+//   MakeStandingPose  - arms relaxed at the sides (a neutral idle stance).
+//   MakeMenuPose      - hands raised in front, for operating in-game menus.
+FrameState MakeStandingPose();
+FrameState MakeMenuPose();
+
 void NeutralizeControllerInputs(FrameState& frame);
 bool ClampFrameY(FrameState& frame);
 

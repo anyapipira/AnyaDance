@@ -13,6 +13,32 @@ FrameState MakeNeutralFrame() {
     return frame;
 }
 
+FrameState MakeStandingPose() {
+    FrameState frame{};
+    frame.devices[DeviceSlot(DeviceIndex::Hmd)] = {true, true, {0.0f, 1.50f, 0.0f}, {}, false};
+    frame.devices[DeviceSlot(DeviceIndex::LeftController)] =
+        {true, true, {-0.18f, 0.83f, -0.10f}, Normalized(Quat{-0.21f, 0.09f, -0.05f, 0.97f}), false};
+    frame.devices[DeviceSlot(DeviceIndex::RightController)] =
+        {true, true, {0.18f, 0.83f, -0.10f}, Normalized(Quat{-0.21f, -0.09f, 0.05f, 0.97f}), false};
+    frame.devices[DeviceSlot(DeviceIndex::Hip)] = {true, true, {0.0f, 1.07f, -0.05f}, {}, false};
+    frame.devices[DeviceSlot(DeviceIndex::LeftFoot)] = {true, true, {-0.09f, 0.26f, 0.10f}, {}, false};
+    frame.devices[DeviceSlot(DeviceIndex::RightFoot)] = {true, true, {0.09f, 0.26f, 0.10f}, {}, false};
+    return frame;
+}
+
+FrameState MakeMenuPose() {
+    FrameState frame{};
+    frame.devices[DeviceSlot(DeviceIndex::Hmd)] = {true, true, {0.0f, 1.50f, 0.0f}, {}, false};
+    frame.devices[DeviceSlot(DeviceIndex::LeftController)] =
+        {true, true, {-0.06f, 1.36f, -0.34f}, Normalized(Quat{0.19f, -0.22f, 0.11f, 0.95f}), false};
+    frame.devices[DeviceSlot(DeviceIndex::RightController)] =
+        {true, true, {0.25f, 1.29f, -0.54f}, Normalized(Quat{0.47f, -0.05f, 0.13f, 0.87f}), false};
+    frame.devices[DeviceSlot(DeviceIndex::Hip)] = {true, true, {0.0f, 1.07f, -0.05f}, {}, false};
+    frame.devices[DeviceSlot(DeviceIndex::LeftFoot)] = {true, true, {-0.09f, 0.26f, 0.10f}, {}, false};
+    frame.devices[DeviceSlot(DeviceIndex::RightFoot)] = {true, true, {0.09f, 0.26f, 0.10f}, {}, false};
+    return frame;
+}
+
 void NeutralizeControllerInputs(FrameState& frame) {
     frame.controllers = {};
 }

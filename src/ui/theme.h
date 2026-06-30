@@ -6,19 +6,22 @@
 
 namespace anyadance::ui {
 
-// "Project Anya" semantic palette. Each hue is tied to a meaning so the UI reads
-// at a glance: cool tones for poses, warm tones for files, green/amber/red for
-// the risk ladder of driver actions, magenta for the dance feature.
+// "Project Anya" palette. Buttons use just two tints — a rose Primary for the
+// hero actions and a calm azure Secondary for everything else. The region colors
+// below are reserved for the body device cards, and Green/Red tint the log result.
 namespace col {
-inline const ImVec4 Rose   {0.886f, 0.420f, 0.612f, 1.00f};  // primary accent (Reset, focus)
-inline const ImVec4 Teal   {0.247f, 0.714f, 0.784f, 1.00f};  // standing pose / hands
-inline const ImVec4 Violet {0.608f, 0.447f, 0.878f, 1.00f};  // menu pose / hip
-inline const ImVec4 Amber  {0.878f, 0.663f, 0.247f, 1.00f};  // save/load / head
-inline const ImVec4 Green  {0.275f, 0.725f, 0.451f, 1.00f};  // register / feet / Sent
-inline const ImVec4 Danger {0.886f, 0.412f, 0.247f, 1.00f};  // restart SteamVR (disruptive)
-inline const ImVec4 Magenta{0.882f, 0.333f, 0.620f, 1.00f};  // dance (MMD)
-inline const ImVec4 Slate  {0.420f, 0.451f, 0.510f, 1.00f};  // unregister / neutral
-inline const ImVec4 Red    {0.851f, 0.325f, 0.310f, 1.00f};  // failed / clear
+inline const ImVec4 Primary  {0.886f, 0.420f, 0.612f, 1.00f};  // hero buttons (poses, play, dance)
+inline const ImVec4 Secondary{0.255f, 0.553f, 0.761f, 1.00f};  // utility/system buttons
+
+// Device card accents, grouped by body region.
+inline const ImVec4 Teal   {0.247f, 0.714f, 0.784f, 1.00f};  // hands
+inline const ImVec4 Violet {0.608f, 0.447f, 0.878f, 1.00f};  // hip
+inline const ImVec4 Amber  {0.878f, 0.663f, 0.247f, 1.00f};  // head
+inline const ImVec4 Green  {0.275f, 0.725f, 0.451f, 1.00f};  // feet / Sent
+inline const ImVec4 Red    {0.851f, 0.325f, 0.310f, 1.00f};  // failed result
+
+// Accent reused by the theme itself (checkmarks, sliders, selection).
+inline const ImVec4 Rose = Primary;
 }  // namespace col
 
 // Install the Anya theme over ImGui's dark base (rounded, indigo night-sky bg,

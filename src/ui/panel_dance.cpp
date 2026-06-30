@@ -302,7 +302,7 @@ void RenderDanceDialog(HWND hwnd) {
     // Analyze runs the Blender solve and lives right under the inputs it consumes.
     ImGui::BeginDisabled(g_app.danceConverting);
     {
-        ScopedButtonColor tint(col::Rose);
+        ScopedButtonColor tint(col::Primary);
         if (ImGui::Button(Tr(Text::DanceAnalyze), ImVec2(-1.0f, 0.0f))) {
             StartDanceExport();
         }
@@ -336,12 +336,12 @@ void RenderDanceDialog(HWND hwnd) {
 
     // Play stays disabled until a solve (or a loaded clip) is ready and (re)starts
     // from the top; Pause/Resume freezes and continues in place; Stop settles into
-    // the standing pose; the Loop checkbox fills the last cell of the row. Transport
-    // colors follow the media convention: go (green), hold (amber), stop (danger).
+    // the standing pose; the Loop checkbox fills the last cell of the row. Play is
+    // the primary action; Pause/Stop are secondary.
     const float quadWidth = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x * 3.0f) / 4.0f;
     ImGui::BeginDisabled(g_app.danceConverting || !g_app.danceMotion.valid);
     {
-        ScopedButtonColor tint(col::Green);
+        ScopedButtonColor tint(col::Primary);
         if (ImGui::Button(Tr(Text::DancePlay), ImVec2(quadWidth, 0.0f))) {
             StartDancePlayback();
         }
@@ -350,7 +350,7 @@ void RenderDanceDialog(HWND hwnd) {
     ImGui::SameLine();
     ImGui::BeginDisabled(!g_app.dancePlaying);
     {
-        ScopedButtonColor tint(col::Amber);
+        ScopedButtonColor tint(col::Secondary);
         if (ImGui::Button(g_app.dancePaused ? Tr(Text::DanceResume) : Tr(Text::DancePause),
                           ImVec2(quadWidth, 0.0f))) {
             if (g_app.dancePaused) {
@@ -364,7 +364,7 @@ void RenderDanceDialog(HWND hwnd) {
     ImGui::SameLine();
     ImGui::BeginDisabled(!g_app.dancePlaying);
     {
-        ScopedButtonColor tint(col::Danger);
+        ScopedButtonColor tint(col::Secondary);
         if (ImGui::Button(Tr(Text::DanceStop), ImVec2(quadWidth, 0.0f))) {
             StopDancePlayback();
         }
@@ -376,40 +376,42 @@ void RenderDanceDialog(HWND hwnd) {
     // Save the analyzed motion as a .nya clip, or load one to play directly. A
     // loaded clip skips both Blender and the remap, so Play is ready immediately.
     const float halfWidth = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x) / 2.0f;
-    // Save/Load dance clips share the warm file accent (no buttons follow in this
-    // dialog, so the tint can run to the end of the popup).
-    ScopedButtonColor danceFileTint(col::Amber);
-    ImGui::BeginDisabled(!g_app.danceMotion.valid);
-    if (ImGui::Button(Tr(Text::DanceSaveNya), ImVec2(halfWidth, 0.0f))) {
-        const std::string path = SaveFileDialog(hwnd, Tr(Text::DanceSaveNya), "AnyaDance (*.nya)", "*.nya", "nya");
-        if (!path.empty()) {
-            NyaClip clip = MakeAnimationClip(g_app.danceMotion, g_app.danceFps, g_app.danceModelPath);
-            clip.loop = g_app.danceLoop;
-            g_app.danceStatus = WriteFileUtf8(path, SerializeNya(clip))
-                                    ? ("Saved " + path)
-                                    : std::string("Could not write the .nya file.");
+    // Save/Load dance clips are secondary (teal). The tint must close before
+    // EndPopup so the ImGui color stack stays balanced at the popup boundary.
+    {
+        ScopedButtonColor danceFileTint(col::Secondary);
+        ImGui::BeginDisabled(!g_app.danceMotion.valid);
+        if (ImGui::Button(Tr(Text::DanceSaveNya), ImVec2(halfWidth, 0.0f))) {
+            const std::string path = SaveFileDialog(hwnd, Tr(Text::DanceSaveNya), "AnyaDance (*.nya)", "*.nya", "nya");
+            if (!path.empty()) {
+                NyaClip clip = MakeAnimationClip(g_app.danceMotion, g_app.danceFps, g_app.danceModelPath);
+                clip.loop = g_app.danceLoop;
+                g_app.danceStatus = WriteFileUtf8(path, SerializeNya(clip))
+                                        ? ("Saved " + path)
+                                        : std::string("Could not write the .nya file.");
+            }
         }
-    }
-    ImGui::EndDisabled();
-    ImGui::SameLine();
-    if (ImGui::Button(Tr(Text::DanceLoadNya), ImVec2(halfWidth, 0.0f))) {
-        const std::string path = OpenFileDialog(hwnd, Tr(Text::DanceLoadNya), "AnyaDance (*.nya)", "*.nya");
-        if (!path.empty()) {
-            NyaClip clip;
-            std::string error;
-            if (ParseNya(ReadFileUtf8(path), clip, error)) {
-                g_app.danceMotion = clip.motion;
-                g_app.danceLoop = clip.loop;
-                g_app.dancePlaying = false;
-                g_app.dancePaused = false;
-                g_app.dancePausedElapsed = 0.0f;
-                char buf[160];
-                std::snprintf(buf, sizeof(buf), "Loaded %zu frames, %.1fs, fingers %s. Press Play.",
-                              clip.motion.frames.size(), clip.motion.duration,
-                              clip.motion.hasFingers ? "yes" : "no");
-                g_app.danceStatus = buf;
-            } else {
-                g_app.danceStatus = "Load failed: " + error;
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button(Tr(Text::DanceLoadNya), ImVec2(halfWidth, 0.0f))) {
+            const std::string path = OpenFileDialog(hwnd, Tr(Text::DanceLoadNya), "AnyaDance (*.nya)", "*.nya");
+            if (!path.empty()) {
+                NyaClip clip;
+                std::string error;
+                if (ParseNya(ReadFileUtf8(path), clip, error)) {
+                    g_app.danceMotion = clip.motion;
+                    g_app.danceLoop = clip.loop;
+                    g_app.dancePlaying = false;
+                    g_app.dancePaused = false;
+                    g_app.dancePausedElapsed = 0.0f;
+                    char buf[160];
+                    std::snprintf(buf, sizeof(buf), "Loaded %zu frames, %.1fs, fingers %s. Press Play.",
+                                  clip.motion.frames.size(), clip.motion.duration,
+                                  clip.motion.hasFingers ? "yes" : "no");
+                    g_app.danceStatus = buf;
+                } else {
+                    g_app.danceStatus = "Load failed: " + error;
+                }
             }
         }
     }

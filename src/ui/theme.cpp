@@ -109,7 +109,7 @@ ImVec4 DeviceRegionColor(DeviceIndex device) {
     case DeviceIndex::RightFoot:
         return col::Green;
     }
-    return col::Slate;
+    return col::Secondary;
 }
 
 }  // namespace anyadance::ui

@@ -114,14 +114,12 @@ void RenderUi(HWND hwnd) {
     // (which also stops playback) and leave finger bends untouched.
     const float poseButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
     {
-        ScopedButtonColor tint(col::Teal);
+        // The three pose buttons are the hero row (primary).
+        ScopedButtonColor tint(col::Primary);
         if (ImGui::Button(Tr(Text::PoseStanding), ImVec2(poseButtonWidth, 44))) {
             RestorePose(MakeStandingPose(), En(Text::PoseStanding));
         }
-    }
-    ImGui::SameLine();
-    {
-        ScopedButtonColor tint(col::Rose);
+        ImGui::SameLine();
         if (ImGui::Button(Tr(Text::Reset), ImVec2(poseButtonWidth, 44))) {
             StopDanceToTPose();  // a manual reset also stops any MMD playback
             g_app.keyboard.Neutralize();
@@ -129,10 +127,7 @@ void RenderUi(HWND hwnd) {
             g_app.fingerBends[1] = FingerBends{};
             g_app.streamer.UpdateFrame(g_app.frame, En(Text::ResetReason), false);
         }
-    }
-    ImGui::SameLine();
-    {
-        ScopedButtonColor tint(col::Violet);
+        ImGui::SameLine();
         if (ImGui::Button(Tr(Text::PoseMenu), ImVec2(poseButtonWidth, 44))) {
             RestorePose(MakeMenuPose(), En(Text::PoseMenu));
         }
@@ -151,8 +146,8 @@ void RenderUi(HWND hwnd) {
         // dances.
         ImGui::TableNextRow();
         {
-            // Save/Load share the warm "file" accent.
-            ScopedButtonColor fileTint(col::Amber);
+            // Save/Load are utility actions (secondary).
+            ScopedButtonColor fileTint(col::Secondary);
             ImGui::TableSetColumnIndex(0);
             if (ImGui::Button(Tr(Text::PoseSave), ImVec2(-1.0f, 0.0f))) {
                 const std::string path = SaveFileDialog(hwnd, Tr(Text::PoseSave), "AnyaDance (*.nya)", "*.nya", "nya");
@@ -180,31 +175,25 @@ void RenderUi(HWND hwnd) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         const float systemButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
-        // Driver actions as a risk ladder: enable (green), disable (slate),
-        // disruptive restart (danger).
+        // Driver/system controls are utility actions (secondary).
         {
-            ScopedButtonColor tint(col::Green);
+            ScopedButtonColor tint(col::Secondary);
             if (ImGui::Button(Tr(Text::RegisterDriver), ImVec2(systemButtonWidth, 0.0f))) {
                 recordStatus(RegisterDriver());
             }
-        }
-        ImGui::SameLine();
-        {
-            ScopedButtonColor tint(col::Slate);
+            ImGui::SameLine();
             if (ImGui::Button(Tr(Text::UnregisterDriver), ImVec2(systemButtonWidth, 0.0f))) {
                 recordStatus(UnregisterDriver());
             }
-        }
-        ImGui::SameLine();
-        {
-            ScopedButtonColor tint(col::Danger);
+            ImGui::SameLine();
             if (ImGui::Button(Tr(Text::RestartSteamVr), ImVec2(systemButtonWidth, 0.0f))) {
                 restartConfirmRequested = true;
             }
         }
         ImGui::TableSetColumnIndex(1);
         {
-            ScopedButtonColor tint(col::Magenta);
+            // Dance is a primary feature entry point.
+            ScopedButtonColor tint(col::Primary);
             if (ImGui::Button(Tr(Text::DanceOpen), ImVec2(-1.0f, 0.0f))) {
                 g_app.danceDialogOpen = true;
             }
@@ -222,15 +211,12 @@ void RenderUi(HWND hwnd) {
         ImGui::PopTextWrapPos();
         ImGui::Spacing();
         {
-            ScopedButtonColor tint(col::Danger);
+            ScopedButtonColor tint(col::Secondary);
             if (ImGui::Button(Tr(Text::RestartSteamVr), ImVec2(160.0f, 0.0f))) {
                 recordStatus(RestartSteamVR());
                 ImGui::CloseCurrentPopup();
             }
-        }
-        ImGui::SameLine();
-        {
-            ScopedButtonColor tint(col::Slate);
+            ImGui::SameLine();
             if (ImGui::Button(Tr(Text::Cancel), ImVec2(120.0f, 0.0f))) {
                 ImGui::CloseCurrentPopup();
             }

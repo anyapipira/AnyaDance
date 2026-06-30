@@ -123,27 +123,27 @@ void ResumeDancePlayback() {
     g_app.dancePaused = false;
 }
 
-// Stop any dance playback and rebuild the T-pose at the dance's start anchor. The
-// dance animation can drift the HMD away from where playback began, so the HMD XZ
-// is snapped back to danceRootX/Z before the reset to keep the T-pose at the right
-// world position. Callers stream the resulting frame themselves.
+// Stop any dance playback and rebuild the canonical T-pose. BuildResetTPose anchors
+// the rig at tracking-space origin, so the HMD's drifted dance position is simply
+// discarded. Callers stream the resulting frame themselves.
 void StopDanceToTPose() {
-    if (g_app.dancePlaying) {
-        g_app.frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.x = g_app.danceRootX;
-        g_app.frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.z = g_app.danceRootZ;
-    }
     g_app.dancePlaying = false;
     g_app.dancePaused = false;
     g_app.dancePausedElapsed = 0.0f;
     g_app.frame = BuildResetTPose(g_app.frame);
 }
 
+// Stopping a dance settles the rig into the standing idle pose (arms at the sides)
+// rather than the T-pose; the explicit Reset button is the way back to the T-pose.
 void StopDancePlayback() {
     if (!g_app.dancePlaying) {
         return;
     }
-    StopDanceToTPose();
-    g_app.streamer.UpdateFrame(g_app.frame, En(Text::ResetReason), false);
+    g_app.dancePlaying = false;
+    g_app.dancePaused = false;
+    g_app.dancePausedElapsed = 0.0f;
+    g_app.frame = MakeStandingPose();
+    g_app.streamer.UpdateFrame(g_app.frame, En(Text::PoseStanding), false);
 }
 
 // Apply a loaded .nya frame as the live pose. Device poses persist in g_app.frame

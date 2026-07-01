@@ -8,7 +8,7 @@
 
 - Windows 10 或更高版本
 - SteamVR
-- [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022 (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+- [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022 (x64)](https://aka.ms/vc14/vc_redist.x64.exe)
 
 从 [GitHub Releases](https://github.com/anyapipira/AnyaDance/releases) 下载 `AnyaDance-<版本>-windows-x64.zip`，然后将完整的 `anyadance` 文件夹解压到固定位置。请勿直接从 ZIP 内运行 `AnyaDance.exe`。
 

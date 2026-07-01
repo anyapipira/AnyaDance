@@ -8,7 +8,7 @@ Requirements:
 
 - Windows 10 or newer
 - SteamVR
-- [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022 (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+- [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022 (x64)](https://aka.ms/vc14/vc_redist.x64.exe)
 
 Download `AnyaDance-<version>-windows-x64.zip` from [GitHub Releases](https://github.com/anyapipira/AnyaDance/releases), then extract the complete `anyadance` folder to a permanent location. Do not run `AnyaDance.exe` from inside the ZIP.
 

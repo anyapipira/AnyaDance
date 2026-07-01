@@ -41,7 +41,7 @@ AnyaDance 作为 **Project Anya**（由 Pipira 开发的更大型项目）的一
 
 - Windows 10 或更高版本
 - 已安装 SteamVR
-- [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022 (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+- [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022 (x64)](https://aka.ms/vc14/vc_redist.x64.exe)
 
 从源代码构建还需要：
 

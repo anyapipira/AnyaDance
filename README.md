@@ -41,7 +41,7 @@ The code builds and its automated tests pass on Windows with Visual Studio 2022.
 
 - Windows 10 or newer
 - SteamVR installed
-- [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022 (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+- [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022 (x64)](https://aka.ms/vc14/vc_redist.x64.exe)
 
 Building from source additionally requires:
 

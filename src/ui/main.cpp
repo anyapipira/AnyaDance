@@ -84,12 +84,12 @@ UiMode ParseUiMode(const std::string& value) {
     return value == "mini" ? UiMode::Mini : UiMode::Full;
 }
 
-int MinWindowWidth() {
-    return g_app.uiMode == UiMode::Mini ? kMiniMinWindowWidth : kMinWindowWidth;
+int MinClientWidth() {
+    return g_app.uiMode == UiMode::Mini ? kMiniMinClientWidth : kMinClientWidth;
 }
 
-int MinWindowHeight() {
-    return g_app.uiMode == UiMode::Mini ? kMiniMinWindowHeight : kMinWindowHeight;
+int MinClientHeight() {
+    return g_app.uiMode == UiMode::Mini ? kMiniMinClientHeight : kMinClientHeight;
 }
 
 void CopyPreferenceString(char* buffer, std::size_t size, const std::string& value) {
@@ -133,11 +133,12 @@ void LoadPreferences(HWND hwnd) {
         } else if (key == "window") {
             int x = 100;
             int y = 100;
-            int w = kDefaultWindowWidth;
-            int h = kDefaultWindowHeight;
+            int w = kDefaultClientWidth;
+            int h = kDefaultClientHeight;
             in >> x >> y >> w >> h;
-            w = std::max(w, MinWindowWidth());
-            h = std::max(h, MinWindowHeight());
+            const SIZE minWindow = OuterWindowSizeForClient(hwnd, MinClientWidth(), MinClientHeight());
+            w = std::max(w, static_cast<int>(minWindow.cx));
+            h = std::max(h, static_cast<int>(minWindow.cy));
             MoveWindow(hwnd, x, y, w, h, FALSE);
         }
     }
@@ -335,8 +336,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_GETMINMAXINFO: {
         MINMAXINFO* minMax = reinterpret_cast<MINMAXINFO*>(lParam);
-        minMax->ptMinTrackSize.x = MinWindowWidth();
-        minMax->ptMinTrackSize.y = MinWindowHeight();
+        const SIZE minWindow = OuterWindowSizeForClient(hWnd, MinClientWidth(), MinClientHeight());
+        minMax->ptMinTrackSize.x = minWindow.cx;
+        minMax->ptMinTrackSize.y = minWindow.cy;
         return 0;
     }
     case WM_SIZE:
@@ -490,15 +492,19 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         return 1;
     }
 
+    constexpr DWORD windowExStyle = WS_EX_APPWINDOW;
+    constexpr DWORD windowStyle = WS_OVERLAPPEDWINDOW;
+    const SIZE defaultWindow = OuterWindowSizeForClient(
+        kDefaultClientWidth, kDefaultClientHeight, windowStyle, windowExStyle);
     HWND hwnd = CreateWindowExW(
-        WS_EX_APPWINDOW,
+        windowExStyle,
         kWindowClassName,
         kWindowTitle,
-        WS_OVERLAPPEDWINDOW,
+        windowStyle,
         100,
         100,
-        kDefaultWindowWidth,
-        kDefaultWindowHeight,
+        defaultWindow.cx,
+        defaultWindow.cy,
         nullptr,
         nullptr,
         hInstance,

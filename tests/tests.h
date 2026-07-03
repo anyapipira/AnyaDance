@@ -20,5 +20,6 @@ void TestJson();
 void TestMmdParse();
 void TestMmdRetarget();
 void TestNya();
+void TestUiLayout();
 
 } // namespace anyadance::tests

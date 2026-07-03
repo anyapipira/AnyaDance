@@ -22,6 +22,7 @@ int main() {
     TestMmdParse();
     TestMmdRetarget();
     TestNya();
+    TestUiLayout();
 
     const int failures = anyadance::testing::Failures();
     if (failures != 0) {

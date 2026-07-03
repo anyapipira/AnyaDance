@@ -27,6 +27,7 @@
 #include "ui/localization.h"
 #include "ui/mmd_dance.h"
 #include "ui/theme.h"
+#include "ui/window_size.h"
 
 #include "imgui.h"
 
@@ -42,33 +43,8 @@
 #include <vector>
 
 namespace anyadance::ui {
-inline constexpr int kDefaultClientWidth = 980;
-inline constexpr int kDefaultClientHeight = 780;
-inline constexpr int kMinClientWidth = 980;
-inline constexpr int kMinClientHeight = 780;
-inline constexpr int kMiniClientWidth = 360;
-inline constexpr int kMiniClientHeight = 480;
-inline constexpr int kMiniMinClientWidth = 280;
-inline constexpr int kMiniMinClientHeight = 340;
 inline constexpr float kFingerBendStep = 0.1f;
 inline constexpr wchar_t kSingleInstanceMutexName[] = L"Local\\AnyaDance.SingleInstance";
-
-// Win32 CreateWindow/MoveWindow dimensions include the non-client title bar and
-// borders. Convert a required ImGui client area into the corresponding outer
-// window size so the canvas never starts smaller than the layout expects.
-inline SIZE OuterWindowSizeForClient(int clientWidth, int clientHeight, DWORD style, DWORD exStyle) {
-    RECT rect{0, 0, clientWidth, clientHeight};
-    if (!AdjustWindowRectEx(&rect, style, FALSE, exStyle)) {
-        return SIZE{clientWidth, clientHeight};
-    }
-    return SIZE{rect.right - rect.left, rect.bottom - rect.top};
-}
-
-inline SIZE OuterWindowSizeForClient(HWND hwnd, int clientWidth, int clientHeight) {
-    const DWORD style = static_cast<DWORD>(GetWindowLongPtrW(hwnd, GWL_STYLE));
-    const DWORD exStyle = static_cast<DWORD>(GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
-    return OuterWindowSizeForClient(clientWidth, clientHeight, style, exStyle);
-}
 
 struct ScopedHandle {
     explicit ScopedHandle(HANDLE value) : handle(value) {}
@@ -82,11 +58,6 @@ struct ScopedHandle {
     ScopedHandle& operator=(const ScopedHandle&) = delete;
 
     HANDLE handle = nullptr;
-};
-
-enum class UiMode {
-    Full,
-    Mini,
 };
 
 // Number keys held while scrolling over the body panel target a single finger.

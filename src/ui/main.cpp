@@ -85,11 +85,11 @@ UiMode ParseUiMode(const std::string& value) {
 }
 
 int MinClientWidth() {
-    return g_app.uiMode == UiMode::Mini ? kMiniMinClientWidth : kMinClientWidth;
+    return MinClientWidthForMode(g_app.uiMode);
 }
 
 int MinClientHeight() {
-    return g_app.uiMode == UiMode::Mini ? kMiniMinClientHeight : kMinClientHeight;
+    return MinClientHeightForMode(g_app.uiMode);
 }
 
 void CopyPreferenceString(char* buffer, std::size_t size, const std::string& value) {
@@ -492,15 +492,12 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         return 1;
     }
 
-    constexpr DWORD windowExStyle = WS_EX_APPWINDOW;
-    constexpr DWORD windowStyle = WS_OVERLAPPEDWINDOW;
-    const SIZE defaultWindow = OuterWindowSizeForClient(
-        kDefaultClientWidth, kDefaultClientHeight, windowStyle, windowExStyle);
+    const SIZE defaultWindow = DefaultOuterWindowSize();
     HWND hwnd = CreateWindowExW(
-        windowExStyle,
+        kMainWindowExStyle,
         kWindowClassName,
         kWindowTitle,
-        windowStyle,
+        kMainWindowStyle,
         100,
         100,
         defaultWindow.cx,

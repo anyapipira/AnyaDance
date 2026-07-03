@@ -224,8 +224,9 @@ if(ANYADANCE_BUILD_TESTS AND BUILD_TESTING)
         tests/test_json.cpp
         tests/test_mmd.cpp
         tests/test_nya.cpp
+        tests/test_ui_layout.cpp
     )
-    target_link_libraries(anyadance_tests PRIVATE anyadance_core)
+    target_link_libraries(anyadance_tests PRIVATE anyadance_core user32)
     target_include_directories(anyadance_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/tests"

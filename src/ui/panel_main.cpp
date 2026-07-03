@@ -196,7 +196,11 @@ void RenderUi(HWND hwnd) {
         {
             ScopedButtonColor tint(col::Secondary);
             if (ImGui::Button(Tr(Text::UnregisterDriver), ImVec2(systemButtonWidth, 0.0f))) {
-                recordStatus(UnregisterDriver());
+                const DriverActionResult result = UnregisterDriver();
+                recordStatus(result);
+                if (result.ok) {
+                    restartConfirmRequested = true;
+                }
             }
         }
         ImGui::SameLine();

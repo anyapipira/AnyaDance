@@ -39,6 +39,10 @@ build/out/anyadance/bin/win64/driver_anyadance.dll
 build/out/anyadance/resources/input/anyadance_controller_profile.json
 build/out/anyadance/resources/input/anyadance_hmd_profile.json
 build/out/anyadance/resources/settings/default.vrsettings
+build/out/anyadance/scripts/uninstall.ps1
+build/out/anyadance/scripts/unregister_driver.ps1
+build/out/anyadance/scripts/restart_steamvr.ps1
+build/out/anyadance/scripts/common_steamvr.ps1
 ```
 
 UI 会构建进驱动文件夹，因此 `build/out/anyadance/` 是一个自包含的捆绑包：exe 会把自身所在的文件夹注册为 SteamVR 驱动。

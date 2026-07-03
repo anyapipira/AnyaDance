@@ -28,13 +28,44 @@ $recordPath = Get-AnyaDanceRegisteredPathRecord
 $recordedRoot = $null
 if (Test-Path $recordPath) { $recordedRoot = ([System.IO.File]::ReadAllText($recordPath)).Trim() }
 
-& $vrpathreg removedriver $DriverRoot 2>$null | Out-Null
-if ($recordedRoot -and ($recordedRoot -ne $DriverRoot)) {
-    Write-Host "Removing recorded registration at $recordedRoot" -ForegroundColor Cyan
-    & $vrpathreg removedriver $recordedRoot 2>$null | Out-Null
+function Test-AnyaDanceDriverRoot {
+    param([string]$Root)
+
+    if (-not $Root) { return $false }
+    $manifestPath = Join-Path $Root "driver.vrdrivermanifest"
+    if (-not (Test-Path -LiteralPath $manifestPath)) { return $false }
+    try {
+        $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+        return $manifest.name -eq "anyadance"
+    } catch {
+        return $false
+    }
+}
+
+# A prior unregister attempt may have consumed the recorded path without removing
+# the registration. Discover every extant AnyaDance bundle from OpenVR's driver
+# list as a fallback, then remove all known candidate roots.
+$rootsToRemove = @($DriverRoot)
+if ($recordedRoot) { $rootsToRemove += $recordedRoot }
+$openvrPaths = Join-Path $env:LOCALAPPDATA "openvr\openvrpaths.vrpath"
+if (Test-Path -LiteralPath $openvrPaths) {
+    $paths = Get-Content -LiteralPath $openvrPaths -Raw | ConvertFrom-Json
+    foreach ($root in @($paths.external_drivers)) {
+        if (Test-AnyaDanceDriverRoot -Root ([string]$root)) {
+            $rootsToRemove += [string]$root
+        }
+    }
+}
+
+foreach ($root in ($rootsToRemove | Where-Object { $_ } | Select-Object -Unique)) {
+    Write-Host "Removing registration at $root" -ForegroundColor Cyan
+    & $vrpathreg removedriver $root 2>$null | Out-Null
 }
 Write-Host "Registration state after removal:" -ForegroundColor Cyan
-& $vrpathreg finddriver anyadance
+& $vrpathreg finddriver anyadance 2>$null
+if ($LASTEXITCODE -eq 0) {
+    throw "AnyaDance is still registered. The settings backup and registered-path record were preserved."
+}
 
 # Restore the pristine SteamVR settings captured at first registration, then
 # clear the backup so the next registration captures a fresh baseline.

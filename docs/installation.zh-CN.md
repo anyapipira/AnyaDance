@@ -57,11 +57,15 @@ requireHmd = true
 
 ## 取消注册
 
-如果使用发布版本，请在应用中依次点击 **取消注册驱动** 与 **重启 SteamVR**。移动或删除解压后的文件夹前必须先完成此操作。
+如果使用发布版本，请在应用中点击 **取消注册驱动**，然后在提示中确认 **重启 SteamVR**。移动或删除解压后的文件夹前必须先完成此操作。
 
 如果从源代码安装，对应的脚本为：
 
 ```powershell
-.\scripts\unregister_driver.ps1
-.\scripts\restart_steamvr.ps1
+.\scripts\uninstall.ps1
 ```
+
+`uninstall.ps1` 会先在 `%LOCALAPPDATA%\AnyaDance\uninstall-recovery` 下保存带时间戳的恢复快照，
+然后取消注册驱动；如果原始设置备份存在，则还原备份，否则清理已知的 AnyaDance 设置覆盖项；
+最后验证驱动已移除并重启 SteamVR。传入 `-NoRestart` 可让 SteamVR 保持停止状态。
+该脚本不会删除应用程序文件。

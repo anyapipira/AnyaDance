@@ -209,15 +209,14 @@ X     按住时右扳机
 ## 取消注册
 
 ```powershell
-.\scripts\unregister_driver.ps1
-.\scripts\restart_steamvr.ps1
+.\scripts\uninstall.ps1
 ```
 
 **取消注册是恢复正常 SteamVR 状态的必要操作。** 在 AnyaDance 驱动处于注册状态期间，SteamVR 会将六个虚拟设备视为真实硬件，这将导致真实头显、控制器和追踪器无法被识别——在驱动移除之前，你的物理 VR 设备将无法正常工作。
 
-`unregister_driver.ps1` 会移除驱动条目，并将 `steamvr.vrsettings` 从注册时创建的备份中还原。SteamVR 重启后，真实设备即可恢复正常追踪。
+`uninstall.ps1` 会保存恢复快照、移除驱动条目、在注册备份存在时还原 `steamvr.vrsettings`、验证移除结果并重启 SteamVR。它不会删除 AnyaDance 应用程序文件。
 
-你也可以在 UI 内通过 **取消注册驱动** 按钮完成该操作，它会触发相同的脚本并自动提示重启 SteamVR。
+你也可以在 UI 内通过 **取消注册驱动** 按钮完成该操作；它会使用相同的恢复文件并提示重启 SteamVR。
 
 ## 卸载
 
@@ -228,7 +227,7 @@ X     按住时右扳机
    - `%LOCALAPPDATA%\AnyaDance\steamvr.vrsettings.backup` — 注册时备份的 SteamVR 设置文件（取消注册时自动删除）
    - `%LOCALAPPDATA%\AnyaDance\registered_driver_path.txt` — 注册时记录的驱动路径，便于在文件夹被移动后仍能取消注册（取消注册时自动删除）
 
-如果在删除文件夹之前跳过了第 1 步，SteamVR 仍会引用（现已不存在的）驱动路径。可从脚本文件夹的副本运行 `unregister_driver.ps1`，或手动在 `%LOCALAPPDATA%\openvr\openvrpaths.vrpath` 中移除该驱动条目。
+如果在删除文件夹之前跳过了第 1 步，SteamVR 仍会引用（现已不存在的）驱动路径。可从脚本文件夹的副本运行 `uninstall.ps1`，或手动在 `%LOCALAPPDATA%\openvr\openvrpaths.vrpath` 中移除该驱动条目。
 
 ## 许可证
 

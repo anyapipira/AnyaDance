@@ -57,11 +57,16 @@ Changing registration or startup settings requires restarting SteamVR.
 
 ## Unregister
 
-For a release installation, click **Unregister Driver** and **Restart SteamVR** in the application. Do this before moving or deleting the extracted folder.
+For a release installation, click **Unregister Driver**, then confirm the **Restart SteamVR** prompt. Do this before moving or deleting the extracted folder.
 
 For a source installation, the equivalent scripts are:
 
 ```powershell
-.\scripts\unregister_driver.ps1
-.\scripts\restart_steamvr.ps1
+.\scripts\uninstall.ps1
 ```
+
+`uninstall.ps1` saves a timestamped recovery snapshot under
+`%LOCALAPPDATA%\AnyaDance\uninstall-recovery`, unregisters the driver, restores
+the original settings backup when available, repairs known AnyaDance overrides
+when that backup is missing, verifies removal, and restarts SteamVR. Pass
+`-NoRestart` to leave SteamVR stopped. It does not delete the application files.

@@ -227,15 +227,14 @@ See [docs/protocol.md](docs/protocol.md) for the full protocol.
 ## Unregister
 
 ```powershell
-.\scripts\unregister_driver.ps1
-.\scripts\restart_steamvr.ps1
+.\scripts\uninstall.ps1
 ```
 
 **Unregistering is required to restore normal SteamVR operation.** While the AnyaDance driver is registered, SteamVR treats all six virtual devices as real hardware. This blocks real headsets, controllers, and trackers from being recognised — your physical VR devices will not work until the driver is removed.
 
-`unregister_driver.ps1` removes the driver entry and restores `steamvr.vrsettings` from the backup that was made during registration. After SteamVR restarts your real devices will track normally again.
+`uninstall.ps1` saves a recovery snapshot, removes the driver entry, restores `steamvr.vrsettings` from the registration backup when available, verifies removal, and restarts SteamVR. It does not delete the AnyaDance application files.
 
-You can also unregister from within the UI using the **Unregister Driver** button, which triggers the same script and prompts to restart SteamVR automatically.
+You can also unregister from within the UI using the **Unregister Driver** button, which uses the same recovery files and prompts to restart SteamVR.
 
 ## Uninstall
 
@@ -246,7 +245,7 @@ You can also unregister from within the UI using the **Unregister Driver** butto
    - `%LOCALAPPDATA%\AnyaDance\steamvr.vrsettings.backup` — the SteamVR settings backup made during registration (removed automatically on unregister)
    - `%LOCALAPPDATA%\AnyaDance\registered_driver_path.txt` — the path recorded at registration so unregister can find the bundle even if it moved (removed automatically on unregister)
 
-If you skip step 1 before deleting the folder, SteamVR will still reference the (now missing) driver path. Run `unregister_driver.ps1` from a copy of the scripts folder, or remove the driver entry manually from `%LOCALAPPDATA%\openvr\openvrpaths.vrpath`.
+If you skip step 1 before deleting the folder, SteamVR will still reference the (now missing) driver path. Run `uninstall.ps1` from a copy of the scripts folder, or remove the driver entry manually from `%LOCALAPPDATA%\openvr\openvrpaths.vrpath`.
 
 ## License
 

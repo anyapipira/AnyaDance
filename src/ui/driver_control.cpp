@@ -157,6 +157,20 @@ bool SamePath(const std::string& a, const std::string& b) {
     return true;
 }
 
+bool IsAnyaDanceDriverRoot(const std::string& root) {
+    const std::optional<std::string> manifestText =
+        ReadTextFile(fs::u8path(root) / L"driver.vrdrivermanifest");
+    if (!manifestText) {
+        return false;
+    }
+    const std::optional<Value> manifest = anyadance::json::Parse(*manifestText);
+    if (!manifest || !manifest->IsObject()) {
+        return false;
+    }
+    const Value* name = manifest->Find("name");
+    return name && name->type == anyadance::json::Type::String && name->string == "anyadance";
+}
+
 fs::path ResolveSettingsPath(const Value& openvrPaths) {
     const Value* config = openvrPaths.Find("config");
     if (config && config->IsArray() && !config->array.empty() &&
@@ -265,6 +279,15 @@ DriverActionResult RegisterDriver() {
             }
         }
 
+        // Registration is not safe without a durable pointer to the exact
+        // bundle root. Write it before changing OpenVR or SteamVR state so an
+        // unregister launched from another copy can always find this entry.
+        ec.clear();
+        fs::create_directories(RegisteredPathRecord().parent_path(), ec);
+        if (ec || !WriteTextFile(RegisteredPathRecord(), PathToUtf8(driverRoot))) {
+            return {false, DriverStatus::ConfigWriteFailed, {}};
+        }
+
         const std::string driverUtf8 = PathToUtf8(driverRoot);
         Value drivers = Value::Array();
         if (const Value* existing = pathsJson->Find("external_drivers"); existing && existing->IsArray()) {
@@ -296,10 +319,6 @@ DriverActionResult RegisterDriver() {
             return {false, DriverStatus::ConfigWriteFailed, {}};
         }
 
-        // Best-effort: remember the exact path we registered so a later Unregister
-        // can clean it up even if the bundle folder is moved afterward.
-        WriteTextFile(RegisteredPathRecord(), driverUtf8);
-
         return {true, DriverStatus::Registered, {}};
     } catch (const std::exception& e) {
         return {false, DriverStatus::Failed, e.what()};
@@ -318,32 +337,46 @@ DriverActionResult UnregisterDriver() {
         const fs::path pathsFile = OpenvrPathsFile();
         fs::path settingsPath(L"C:\\Program Files (x86)\\Steam\\config\\steamvr.vrsettings");
 
-        if (std::optional<std::string> pathsText = ReadTextFile(pathsFile)) {
-            if (std::optional<Value> pathsJson = anyadance::json::Parse(*pathsText); pathsJson && pathsJson->IsObject()) {
-                settingsPath = ResolveSettingsPath(*pathsJson);
-                if (Value* drivers = pathsJson->Find("external_drivers"); drivers && drivers->IsArray()) {
-                    auto& entries = drivers->array;
-                    entries.erase(std::remove_if(entries.begin(), entries.end(), [&](const Value& v) {
-                        if (v.type != anyadance::json::Type::String) {
-                            return false;
-                        }
-                        return SamePath(v.string, driverUtf8) ||
-                               (!recordedUtf8.empty() && SamePath(v.string, recordedUtf8));
-                    }), entries.end());
-                    if (!WriteTextFile(pathsFile, anyadance::json::Serialize(*pathsJson))) {
-                        return {false, DriverStatus::ConfigWriteFailed, {}};
-                    }
+        const std::optional<std::string> pathsText = ReadTextFile(pathsFile);
+        if (!pathsText) {
+            return {false, DriverStatus::OpenvrPathsMissing, {}};
+        }
+        std::optional<Value> pathsJson = anyadance::json::Parse(*pathsText);
+        if (!pathsJson || !pathsJson->IsObject()) {
+            return {false, DriverStatus::ConfigWriteFailed, {}};
+        }
+        settingsPath = ResolveSettingsPath(*pathsJson);
+        if (Value* drivers = pathsJson->Find("external_drivers"); drivers && drivers->IsArray()) {
+            auto& entries = drivers->array;
+            entries.erase(std::remove_if(entries.begin(), entries.end(), [&](const Value& v) {
+                if (v.type != anyadance::json::Type::String) {
+                    return false;
                 }
+                return SamePath(v.string, driverUtf8) ||
+                       (!recordedUtf8.empty() && SamePath(v.string, recordedUtf8)) ||
+                       IsAnyaDanceDriverRoot(v.string);
+            }), entries.end());
+            if (!WriteTextFile(pathsFile, anyadance::json::Serialize(*pathsJson))) {
+                return {false, DriverStatus::ConfigWriteFailed, {}};
             }
         }
 
         const fs::path backupPath = BackupPath();
         std::error_code ec;
         if (fs::exists(backupPath)) {
-            fs::copy_file(backupPath, settingsPath, fs::copy_options::overwrite_existing, ec);
-            fs::remove(backupPath, ec);
+            if (!fs::copy_file(backupPath, settingsPath, fs::copy_options::overwrite_existing, ec) || ec) {
+                return {false, DriverStatus::ConfigWriteFailed, {}};
+            }
+            ec.clear();
+            if (!fs::remove(backupPath, ec) || ec) {
+                return {false, DriverStatus::ConfigWriteFailed, {}};
+            }
         }
-        fs::remove(RegisteredPathRecord(), ec);
+        ec.clear();
+        const bool recordExists = fs::exists(RegisteredPathRecord(), ec);
+        if (ec || (recordExists && (!fs::remove(RegisteredPathRecord(), ec) || ec))) {
+            return {false, DriverStatus::ConfigWriteFailed, {}};
+        }
         return {true, DriverStatus::Unregistered, {}};
     } catch (const std::exception& e) {
         return {false, DriverStatus::Failed, e.what()};

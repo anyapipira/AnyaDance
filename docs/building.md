@@ -39,6 +39,10 @@ build/out/anyadance/bin/win64/driver_anyadance.dll
 build/out/anyadance/resources/input/anyadance_controller_profile.json
 build/out/anyadance/resources/input/anyadance_hmd_profile.json
 build/out/anyadance/resources/settings/default.vrsettings
+build/out/anyadance/scripts/uninstall.ps1
+build/out/anyadance/scripts/unregister_driver.ps1
+build/out/anyadance/scripts/restart_steamvr.ps1
+build/out/anyadance/scripts/common_steamvr.ps1
 build/out/anyadance/LICENSE
 build/out/anyadance/NOTICE
 build/out/anyadance/THIRD_PARTY_NOTICES.md

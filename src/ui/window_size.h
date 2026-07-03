@@ -48,9 +48,58 @@ inline SIZE OuterWindowSizeForClient(int clientWidth, int clientHeight, DWORD st
 }
 
 inline SIZE OuterWindowSizeForClient(HWND hwnd, int clientWidth, int clientHeight) {
+    RECT windowRect{};
+    RECT clientRect{};
+    if (GetWindowRect(hwnd, &windowRect) && GetClientRect(hwnd, &clientRect)) {
+        const int currentWindowWidth = windowRect.right - windowRect.left;
+        const int currentWindowHeight = windowRect.bottom - windowRect.top;
+        const int currentClientWidth = clientRect.right - clientRect.left;
+        const int currentClientHeight = clientRect.bottom - clientRect.top;
+        return SIZE{
+            clientWidth + currentWindowWidth - currentClientWidth,
+            clientHeight + currentWindowHeight - currentClientHeight};
+    }
+
     const DWORD style = static_cast<DWORD>(GetWindowLongPtrW(hwnd, GWL_STYLE));
     const DWORD exStyle = static_cast<DWORD>(GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
     return OuterWindowSizeForClient(clientWidth, clientHeight, style, exStyle);
+}
+
+// AdjustWindowRectEx can differ from the realized non-client frame by a pixel
+// on headless Windows and across DPI/theme configurations. Measure the actual
+// window after creation and correct any deficit so the requested client area is
+// a runtime guarantee, not an estimate based only on system metrics.
+inline bool EnsureMinimumClientArea(HWND hwnd, int minClientWidth, int minClientHeight) {
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        RECT clientRect{};
+        if (!GetClientRect(hwnd, &clientRect)) {
+            return false;
+        }
+        const int clientWidth = clientRect.right - clientRect.left;
+        const int clientHeight = clientRect.bottom - clientRect.top;
+        if (clientWidth >= minClientWidth && clientHeight >= minClientHeight) {
+            return true;
+        }
+
+        const int targetClientWidth = clientWidth < minClientWidth ? minClientWidth : clientWidth;
+        const int targetClientHeight = clientHeight < minClientHeight ? minClientHeight : clientHeight;
+        const SIZE targetWindow = OuterWindowSizeForClient(hwnd, targetClientWidth, targetClientHeight);
+        if (!SetWindowPos(
+                hwnd,
+                nullptr,
+                0,
+                0,
+                targetWindow.cx,
+                targetWindow.cy,
+                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE)) {
+            return false;
+        }
+    }
+
+    RECT clientRect{};
+    return GetClientRect(hwnd, &clientRect) &&
+           clientRect.right - clientRect.left >= minClientWidth &&
+           clientRect.bottom - clientRect.top >= minClientHeight;
 }
 
 inline SIZE DefaultOuterWindowSize() {

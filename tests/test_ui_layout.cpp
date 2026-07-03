@@ -37,10 +37,11 @@ void TestUiLayout() {
         nullptr);
     EXPECT_TRUE(window != nullptr);
     if (window) {
+        EXPECT_TRUE(EnsureMinimumClientArea(window, kDefaultClientWidth, kDefaultClientHeight));
         RECT client{};
         EXPECT_TRUE(GetClientRect(window, &client) != FALSE);
-        EXPECT_TRUE(client.right - client.left == kDefaultClientWidth);
-        EXPECT_TRUE(client.bottom - client.top == kDefaultClientHeight);
+        EXPECT_TRUE(client.right - client.left >= kDefaultClientWidth);
+        EXPECT_TRUE(client.bottom - client.top >= kDefaultClientHeight);
         DestroyWindow(window);
     }
 

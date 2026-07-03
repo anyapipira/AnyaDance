@@ -140,6 +140,7 @@ void LoadPreferences(HWND hwnd) {
             w = std::max(w, static_cast<int>(minWindow.cx));
             h = std::max(h, static_cast<int>(minWindow.cy));
             MoveWindow(hwnd, x, y, w, h, FALSE);
+            EnsureMinimumClientArea(hwnd, MinClientWidth(), MinClientHeight());
         }
     }
 }
@@ -519,6 +520,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         }
         return 1;
     }
+
+    EnsureMinimumClientArea(hwnd, kDefaultClientWidth, kDefaultClientHeight);
 
     SetWindowTextW(hwnd, kWindowTitle);
 

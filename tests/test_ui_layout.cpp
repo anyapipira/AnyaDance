@@ -19,9 +19,14 @@ void TestUiLayout() {
     EXPECT_TRUE(outer.cx >= kDefaultClientWidth);
     EXPECT_TRUE(outer.cy > kDefaultClientHeight);
 
-    // Verify the conversion against a real (hidden) Win32 window. This catches
-    // the original regression where 980x780 was passed as the outer size and
-    // produced a client area smaller than the ImGui layout.
+    // Verify the conversion against a real (hidden) Win32 window. Use a client
+    // size that fits the 1024x768 virtual desktop on Windows CI runners; Windows
+    // clamps top-level windows to that desktop before they can realize a
+    // 780-pixel client height.
+    constexpr int testClientWidth = 640;
+    constexpr int testClientHeight = 480;
+    const SIZE testOuter = OuterWindowSizeForClient(
+        testClientWidth, testClientHeight, kMainWindowStyle, kMainWindowExStyle);
     HWND window = CreateWindowExW(
         kMainWindowExStyle,
         L"STATIC",
@@ -29,19 +34,19 @@ void TestUiLayout() {
         kMainWindowStyle,
         0,
         0,
-        outer.cx,
-        outer.cy,
+        testOuter.cx,
+        testOuter.cy,
         nullptr,
         nullptr,
         GetModuleHandleW(nullptr),
         nullptr);
     EXPECT_TRUE(window != nullptr);
     if (window) {
-        EXPECT_TRUE(EnsureMinimumClientArea(window, kDefaultClientWidth, kDefaultClientHeight));
+        EXPECT_TRUE(EnsureMinimumClientArea(window, testClientWidth, testClientHeight));
         RECT client{};
         EXPECT_TRUE(GetClientRect(window, &client) != FALSE);
-        EXPECT_TRUE(client.right - client.left >= kDefaultClientWidth);
-        EXPECT_TRUE(client.bottom - client.top >= kDefaultClientHeight);
+        EXPECT_TRUE(client.right - client.left >= testClientWidth);
+        EXPECT_TRUE(client.bottom - client.top >= testClientHeight);
         DestroyWindow(window);
     }
 

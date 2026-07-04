@@ -12,7 +12,7 @@
 
 从 [GitHub Releases](https://github.com/anyapipira/AnyaDance/releases) 下载 `AnyaDance-<版本>-windows-x64.zip`，然后将完整的 `anyadance` 文件夹解压到固定位置。请勿直接从 ZIP 内运行 `AnyaDance.exe`。
 
-运行 `AnyaDance.exe`，接受免责声明，然后依次点击 **注册驱动** 和 **重启 SteamVR**。应用会注册其自身所在的文件夹，因此驱动处于注册状态时不要移动或删除该文件夹。
+运行 `AnyaDance.exe`，确认已了解安全提示，然后依次点击 **注册驱动** 和 **重启 SteamVR**。应用会注册其自身所在的文件夹，因此驱动处于注册状态时不要移动或删除该文件夹。
 
 ## 从源代码安装
 

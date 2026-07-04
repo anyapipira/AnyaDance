@@ -27,11 +27,11 @@ AnyaDance 作为 **Project Anya**（由 Pipira 开发的更大型项目）的一
 
 注册驱动会更改你的 SteamVR 配置：它会将 SteamVR 切换为全虚拟模式并写入 `steamvr.vrsettings`，因此在驱动处于注册状态期间，你的真实头显、控制器与追踪器将无法被追踪（注册时会创建备份，取消注册会将其还原）。虚拟头显还会通过 SteamVR 合成器持续渲染左右两只眼睛，会占用额外的 GPU 与 CPU 资源；提高渲染分辨率会进一步加大该负载。
 
-你需自行承担使用本软件的全部风险。本软件按“原样”提供，不附带任何形式的担保；对于因使用或滥用造成的任何后果（包括账号封禁或失去访问权限），作者概不负责，亦不承担任何责任。你同意使作者免于因你的使用而产生的任何索赔。
+你需自行承担使用本软件的全部风险。本软件按“原样”提供，不附带任何形式的担保；对于因使用或滥用造成的任何后果（包括账号封禁或失去访问权限），作者概不负责，亦不承担任何责任。
 
 本项目与 VRChat、Valve、Steam 或 SteamVR 无任何关联，也未获其认可。所有商标归各自所有者所有。
 
-完整文本见 [DISCLAIMER.md](DISCLAIMER.md)。伴随 UI 也会显示此免责声明，并要求在首次启动时接受。具有法律约束力的版本以英文为准。
+完整文本见 [DISCLAIMER.md](DISCLAIMER.md)。该提示用于确认用户已了解安全风险，并非附加许可证条件。伴随 UI 会在首次启动时要求用户确认已了解。具有法律约束力的版本以英文为准。
 
 ## 状态
 
@@ -58,7 +58,7 @@ AnyaDance 作为 **Project Anya**（由 Pipira 开发的更大型项目）的一
 
 1. 从 [GitHub Releases](https://github.com/anyapipira/AnyaDance/releases) 页面下载 `AnyaDance-<版本>-windows-x64.zip`。
 2. 将完整的 `anyadance` 文件夹解压到固定位置。请勿直接从 ZIP 内运行程序；驱动处于注册状态时，也不要移动或删除该文件夹。
-3. 运行 `AnyaDance.exe`，阅读并接受免责声明，然后点击 **注册驱动**。
+3. 运行 `AnyaDance.exe`，阅读并确认已了解安全提示，然后点击 **注册驱动**。
 4. 点击 **重启 SteamVR**。SteamVR 将以全虚拟模式启动，并使用 AnyaDance 的头显、控制器和追踪器。
 
 使用完毕后，请先点击 **取消注册驱动** 并重启 SteamVR，再移动或删除该文件夹。这样会还原 SteamVR 设置备份，并恢复真实设备追踪。详见[安装](docs/installation.zh-CN.md)。
@@ -234,6 +234,8 @@ X     按住时右扳机
 AnyaDance 是开源软件，依据 Apache License 2.0 授权。
 
 依据 Apache License 2.0 授权。参见 [LICENSE](LICENSE) 与署名文件 [NOTICE](NOTICE)。再分发时必须保留 NOTICE 内容并标注修改过的文件。捆绑的第三方组件保留各自的许可证；详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+媒体素材的权利归属、授权范围，以及 EmoteLab 舞蹈 GIF 所适用的独立条款见 [ASSETS.md](ASSETS.md)。
 
 AnyaDance 与 Project Anya 的名称、标识和品牌使用说明见 [TRADEMARKS.md](TRADEMARKS.md)。
 

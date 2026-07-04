@@ -12,7 +12,7 @@ Requirements:
 
 Download `AnyaDance-<version>-windows-x64.zip` from [GitHub Releases](https://github.com/anyapipira/AnyaDance/releases), then extract the complete `anyadance` folder to a permanent location. Do not run `AnyaDance.exe` from inside the ZIP.
 
-Run `AnyaDance.exe`, accept the disclaimer, and use **Register Driver** followed by **Restart SteamVR**. The application registers its own folder, so do not move or delete that folder while the driver remains registered.
+Run `AnyaDance.exe`, acknowledge the safety notice, and use **Register Driver** followed by **Restart SteamVR**. The application registers its own folder, so do not move or delete that folder while the driver remains registered.
 
 ## Install From Source
 

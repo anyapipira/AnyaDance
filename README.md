@@ -27,11 +27,11 @@ Feeding virtual devices or spoofed tracking into a live online game may violate 
 
 Registering the driver changes your SteamVR configuration: it puts SteamVR into a fully virtual mode and writes to `steamvr.vrsettings`, so while the driver is registered your real headset, controllers, and trackers will not be tracked (a backup is made, and unregistering restores it). The virtual HMD also continuously renders both eyes through the SteamVR compositor, which consumes additional GPU and CPU; raising the render resolution increases that load further.
 
-You use this software entirely at your own risk. It is provided "as is" without warranty of any kind, and the authors accept no responsibility or liability for any consequences of use or misuse, including account bans or loss of access. You agree to hold the authors harmless from any claim arising out of your use.
+You use this software entirely at your own risk. It is provided "as is" without warranty of any kind, and the authors accept no responsibility or liability for any consequences of use or misuse, including account bans or loss of access.
 
 This project is not affiliated with or endorsed by VRChat, Valve, Steam, or SteamVR. All trademarks belong to their respective owners.
 
-See [DISCLAIMER.md](DISCLAIMER.md) for the full text. The companion UI also shows this disclaimer and requires acceptance on first launch.
+See [DISCLAIMER.md](DISCLAIMER.md) for the full text. This is a safety acknowledgment, not an additional license condition. The companion UI asks you to acknowledge it on first launch.
 
 ## Status
 
@@ -58,7 +58,7 @@ Pinned dependencies:
 
 1. Download `AnyaDance-<version>-windows-x64.zip` from the [GitHub Releases](https://github.com/anyapipira/AnyaDance/releases) page.
 2. Extract the complete `anyadance` folder to a permanent location. Do not run the executable from inside the ZIP, and do not move or delete the folder while its driver is registered.
-3. Run `AnyaDance.exe`, review and accept the disclaimer, then click **Register Driver**.
+3. Run `AnyaDance.exe`, review and acknowledge the safety notice, then click **Register Driver**.
 4. Click **Restart SteamVR**. SteamVR will start in fully virtual mode with the AnyaDance HMD, controllers, and trackers.
 
 When finished, click **Unregister Driver** and restart SteamVR before moving or deleting the folder. This restores the SteamVR settings backup and returns SteamVR to real-device tracking. See [Installation](docs/installation.md) for details.
@@ -255,6 +255,9 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) and the
 [NOTICE](NOTICE) attribution file. Redistributions must preserve the NOTICE
 contents and mark any modified files. Bundled third-party components keep their
 own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Media ownership, licensing, and the separate terms that apply to the EmoteLab
+dance GIF are documented in [ASSETS.md](ASSETS.md).
 
 See [TRADEMARKS.md](TRADEMARKS.md) for the AnyaDance and Project Anya branding
 notice.

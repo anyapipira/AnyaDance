@@ -16,11 +16,12 @@ and CPU; raising the render resolution increases that load further.
 
 You use this software entirely at your own risk. It is provided "as is" without
 warranty of any kind, and the authors accept no responsibility or liability for
-any consequences of use or misuse, including account bans or loss of access. You
-agree to hold the authors harmless from any claim arising out of your use.
+any consequences of use or misuse, including account bans or loss of access.
 
 This project is not affiliated with or endorsed by VRChat, Valve, Steam, or
 SteamVR. All trademarks belong to their respective owners.
 
-This text is not legal advice. The companion UI (`AnyaDance.exe`)
-displays this disclaimer and requires acceptance on first launch.
+This notice is a safety acknowledgment only. It does not modify the Apache
+License 2.0 or impose additional restrictions on use, modification, or
+redistribution. The companion UI (`AnyaDance.exe`) displays the notice and asks
+you to acknowledge it on first launch.

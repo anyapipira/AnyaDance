@@ -83,8 +83,9 @@ const char* const kStrings[kTextCount][kLanguageCount] = {
      "additional GPU and CPU; raising the render resolution increases that load further.\n\n"
      "You use this software entirely at your own risk. It is provided \"as is\" without warranty of "
      "any kind, and the authors accept no responsibility or liability for any consequences of use or "
-     "misuse, including account bans or loss of access. You agree to hold the authors harmless from "
-     "any claim arising out of your use.\n\n"
+     "misuse, including account bans or loss of access.\n\n"
+     "This notice is a safety acknowledgment only. It does not modify the Apache License 2.0 or "
+     "impose additional restrictions on use, modification, or redistribution.\n\n"
      "This project is not affiliated with or endorsed by VRChat, Valve, Steam, or SteamVR. All "
      "trademarks belong to their respective owners.",
      u8"AnyaDance 仅供合法、经授权的测试与开发使用。\n\n"
@@ -94,9 +95,10 @@ const char* const kStrings[kTextCount][kLanguageCount] = {
      u8"注册状态期间，你的真实头显、控制器与追踪器将无法被追踪（注册时会创建备份，取消注册会将其还原）。"
      u8"虚拟头显还会通过 SteamVR 合成器持续渲染左右两只眼睛，会占用额外的 GPU 与 CPU 资源；提高渲染分辨率会进一步加大该负载。\n\n"
      u8"你需自行承担使用本软件的全部风险。本软件按“原样”提供，不附带任何形式的担保；对于因使用或滥用造成的任何后果"
-     u8"（包括账号封禁或失去访问权限），作者概不负责，亦不承担任何责任。你同意使作者免于因你的使用而产生的任何索赔。\n\n"
+     u8"（包括账号封禁或失去访问权限），作者概不负责，亦不承担任何责任。\n\n"
+     u8"本提示仅用于确认你已了解安全风险，不会修改 Apache License 2.0，也不会对使用、修改或再分发施加额外限制。\n\n"
      u8"本项目与 VRChat、Valve、Steam 或 SteamVR 无任何关联，也未获其认可。所有商标归各自所有者所有。"},
-    /* DisclaimerAccept      */ {"I Understand and Accept", u8"我已理解并接受"},
+    /* DisclaimerAccept      */ {"I Understand", u8"我已了解"},
     /* DisclaimerQuit        */ {"Quit", u8"退出"},
     /* DanceOpen             */ {"Dance (MMD)", u8"舞蹈 (MMD)"},
     /* DanceTitle            */ {"MMD Dance", u8"MMD 舞蹈"},

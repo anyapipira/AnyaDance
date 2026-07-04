@@ -25,6 +25,11 @@ Positions are in metres in the driver pose coordinate space expected by SteamVR 
 
 ## Packet Shape
 
+The AnyaDance companion emits a complete snapshot on every datagram: all six
+device entries and input entries for both controllers. `finger_bends` is emitted
+only when finger data is present. A minimal third-party sender may include fewer
+devices, provided at least one recognized device entry is valid.
+
 ```json
 {
   "version": 1,
@@ -34,6 +39,46 @@ Positions are in metres in the driver pose coordinate space expected by SteamVR 
       "connected": true,
       "pose": {
         "position": [0.0, 1.5, 0.0],
+        "rotation_xyzw": [0.0, 0.0, 0.0, 1.0]
+      }
+    },
+    "left_controller": {
+      "valid": true,
+      "connected": true,
+      "pose": {
+        "position": [-0.26, 1.10, -0.54],
+        "rotation_xyzw": [0.77, 0.10, -0.16, 0.61]
+      }
+    },
+    "right_controller": {
+      "valid": true,
+      "connected": true,
+      "pose": {
+        "position": [0.27, 1.57, -0.54],
+        "rotation_xyzw": [0.77, -0.10, 0.16, 0.61]
+      }
+    },
+    "hip": {
+      "valid": true,
+      "connected": true,
+      "pose": {
+        "position": [0.0, 1.07, -0.05],
+        "rotation_xyzw": [0.0, 0.0, 0.0, 1.0]
+      }
+    },
+    "left_foot": {
+      "valid": true,
+      "connected": true,
+      "pose": {
+        "position": [-0.09, 0.26, 0.10],
+        "rotation_xyzw": [0.0, 0.0, 0.0, 1.0]
+      }
+    },
+    "right_foot": {
+      "valid": true,
+      "connected": true,
+      "pose": {
+        "position": [0.09, 0.26, 0.10],
         "rotation_xyzw": [0.0, 0.0, 0.0, 1.0]
       }
     }
@@ -59,6 +104,20 @@ Positions are in metres in the driver pose coordinate space expected by SteamVR 
         "ring": 0.0,
         "pinky": 0.0
       }
+    },
+    "right_controller": {
+      "trigger_click": false,
+      "trigger_value": 0.0,
+      "menu_click": false,
+      "system_click": false,
+      "a_click": false,
+      "b_click": false,
+      "grip_click": false,
+      "grip_value": 0.0,
+      "joystick_x": 0.0,
+      "joystick_y": 0.0,
+      "trackpad_x": 0.0,
+      "trackpad_y": 0.0
     }
   }
 }
@@ -91,6 +150,37 @@ Each device entry requires:
   }
 }
 ```
+
+| Field | Type | Requirement and behavior |
+| --- | --- | --- |
+| `valid` | Boolean | Required for the entry to parse. Version 1 keeps every virtual device valid after startup, so the driver currently reports `true` to SteamVR regardless of this value. |
+| `connected` | Boolean | Required for the entry to parse. Version 1 keeps every virtual device connected after startup, so the driver currently reports `true` to SteamVR regardless of this value. |
+| `pose.position` | Three-number array | Required. Metres in driver pose space; every component must be finite and within `-10.0` to `10.0`. Y is additionally capped at `2.0`. |
+| `pose.rotation_xyzw` | Four-number array | Required. Quaternion in XYZW order; values must be finite and its squared length must be from `0.5` through `1.5`. Accepted values are normalized. |
+
+The `inputs` object is optional. Only `left_controller` and `right_controller`
+input entries affect OpenVR controller state. Each member inside a controller
+input entry is optional; omitted members use the defaults or fallbacks below.
+An input entry is applied only when the matching controller also has a valid
+entry under `devices` in the same datagram. If that device entry is present but
+its input entry is absent, ordinary buttons and axes reset to their defaults. If
+the device entry itself is absent or malformed, its previous pose and inputs are
+retained.
+
+| Input field | Type | Range/default | Driver behavior |
+| --- | --- | --- | --- |
+| `trigger_click` | Boolean | Default `false` | Drives `/input/trigger/click`. |
+| `trigger_value` | Number | Clamped to `0.0`–`1.0`; defaults to `1.0` when `trigger_click` is true, otherwise `0.0` | Drives `/input/trigger/value`. |
+| `menu_click` | Boolean | Default `false` | Drives `/input/application_menu/click`. |
+| `system_click` | Boolean | Default `false` | Accepted and emitted for version-1 compatibility, but the current driver exposes no `/input/system/click` component, so it has no OpenVR effect. |
+| `a_click` | Boolean | Default `false` | Drives `/input/a/click`. |
+| `b_click` | Boolean | Default `false` | Drives `/input/b/click`. |
+| `grip_click` | Boolean | Default `false` | Drives `/input/grip/click` and `/input/grip/touch`. |
+| `grip_value` | Number | Clamped to `0.0`–`1.0`; defaults to `1.0` when `grip_click` is true, otherwise `0.0` | Drives both `/input/grip/value` and `/input/grip/force`. |
+| `joystick_x`, `joystick_y` | Number | Each clamped to `-1.0`–`1.0`; default `0.0` | Drive `/input/thumbstick/x` and `/input/thumbstick/y`. |
+| `trackpad_x`, `trackpad_y` | Number | Each clamped to `-1.0`–`1.0`; each omitted axis falls back to its corresponding joystick axis | Drive `/input/trackpad/x` and `/input/trackpad/y`. |
+| `finger_bends` | Object | Optional; omission retains the last applied bends (open until the first valid object) | Drives the hand skeleton. If present, all five members below must parse successfully or the entire object is ignored. |
+| `finger_bends.thumb`, `.index`, `.middle`, `.ring`, `.pinky` | Number | Each clamped to `0.0` (open) through `1.0` (fully bent) | Applied to the corresponding finger in `/input/skeleton/left` or `/input/skeleton/right`. |
 
 ## Validation
 
@@ -153,4 +243,6 @@ The driver exposes Valve Index-compatible controller components:
 /input/skeleton/right
 ```
 
-Input values are clamped to their valid ranges. If `trackpad_x` or `trackpad_y` are omitted, the corresponding joystick value is used as a fallback. `finger_bends` is optional; when present, each value is clamped to `0.0` through `1.0` and drives the controller skeleton.
+`/input/grip/touch` and `/input/grip/force` do not have separate wire fields;
+they are derived from `grip_click` and `grip_value`, respectively. Skeleton
+components likewise derive their transforms from `finger_bends`.

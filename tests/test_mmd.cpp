@@ -52,6 +52,8 @@ void TestMmdParse() {
     const std::string json =
         "{ \"format\":\"anyadance_mmd_solved\", \"version\":1, \"fps\":60, \"model\":\"Miku\", "
         "\"has_fingers\":true, "
+        "\"rest_hand_axes\":{\"left_controller\":{\"finger\":[-1,0,0],\"palm\":[0,0,-1]},"
+        "\"right_controller\":{\"finger\":[1,0,0],\"palm\":[0,0,-1]}}, "
         "\"rest\": { "
         "\"pelvis\":{\"p\":[0,0.9,0],\"q\":[0,0,0,1]}, \"head\":{\"p\":[0,1.5,0],\"q\":[0,0,0,1]}, "
         "\"left_shoulder\":{\"p\":[-0.18,1.35,0],\"q\":[0,0,0,1]}, \"right_shoulder\":{\"p\":[0.18,1.35,0],\"q\":[0,0,0,1]}, "
@@ -77,6 +79,9 @@ void TestMmdParse() {
     EXPECT_TRUE(motion.frames[0].hasFingers);
     EXPECT_NEAR(motion.frames[0].leftFingers[2], 0.3f, 0.001f);
     EXPECT_NEAR(motion.rest[JointSlot(SolvedJointId::Head)].position.y, 1.5f, 0.001f);
+    EXPECT_TRUE(motion.restHandAxes[0].valid);
+    EXPECT_VEC3_NEAR(motion.restHandAxes[0].finger, (Vec3{-1.0f, 0.0f, 0.0f}));
+    EXPECT_VEC3_NEAR(motion.restHandAxes[1].palm, (Vec3{0.0f, 0.0f, -1.0f}));
 
     SolvedMotion bad;
     EXPECT_FALSE(ParseSolvedMotion("{ \"frames\": [] }", bad, error));
@@ -113,6 +118,36 @@ void TestMmdRetarget() {
     EXPECT_NEAR(rest.devices[DeviceSlot(DeviceIndex::RightController)].position.x, 0.642f, 0.001f);
     EXPECT_SAME_ROTATION(rest.devices[DeviceSlot(DeviceIndex::Hmd)].rotation, Quat{});
     EXPECT_SAME_ROTATION(rest.devices[DeviceSlot(DeviceIndex::LeftFoot)].rotation, Quat{});
+
+    // Optional model-derived hand axes fix the absolute palm roll while keeping
+    // the neutral index finger aligned with the model's hand direction.
+    SolvedMotion handAxesMotion = MakeStandingMotion();
+    handAxesMotion.restHandAxes[0] = {
+        {-1.0f, 0.0f, 0.0f},
+        {0.0f, 0.0f, -1.0f},
+        true,
+    };
+    const DanceMotion handAxesDance = BuildDanceMotion(handAxesMotion, params);
+    const FrameState& handAxesRest = handAxesDance.frames[0];
+    const Quat handAxesRotation =
+        handAxesRest.devices[DeviceSlot(DeviceIndex::LeftController)].rotation;
+    const Vec3 neutralIndexLeft{0.11569004f, -0.51338429f, -0.85032487f};
+    const Vec3 neutralPalmLeft{0.9783916f, -0.0887937f, 0.1867233f};
+    EXPECT_VEC3_NEAR(Rotate(handAxesRotation, neutralIndexLeft), (Vec3{-1.0f, 0.0f, 0.0f}));
+    EXPECT_VEC3_NEAR(Rotate(handAxesRotation, neutralPalmLeft), (Vec3{0.0f, 0.0f, -1.0f}));
+
+    // The controller basis and palm offset follow every live wrist degree of
+    // freedom. A 90-degree wrist flex turns both the pointing direction and the
+    // palm anchor down; the former forearm-only reconstruction lost this motion.
+    SolvedMotion flexedMotion = MakeStandingMotion();
+    flexedMotion.frames[1].joints[JointSlot(SolvedJointId::LeftWrist)].rotation =
+        FromAxisAngle({0.0f, 0.0f, 1.0f}, DegToRad(90.0f));
+    const DanceMotion flexedDance = BuildDanceMotion(flexedMotion, params);
+    const DeviceState& flexedHand =
+        flexedDance.frames[1].devices[DeviceSlot(DeviceIndex::LeftController)];
+    EXPECT_VEC3_NEAR(flexedHand.position, (Vec3{-0.60f, 1.308f, 0.0f}));
+    EXPECT_VEC3_NEAR(Rotate(flexedHand.rotation, neutralIndexLeft),
+                     (Vec3{0.0f, -1.0f, 0.0f}));
 
     // The floor offset lifts every device by a constant, e.g. to lift a dance off
     // the ground; it does not change the source-height scale.

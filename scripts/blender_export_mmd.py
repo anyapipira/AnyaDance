@@ -102,6 +102,9 @@ def main() -> int:
         finger_selected = _map_fingers(set(bone_names))
 
         rest = _read_pose(bpy, mathutils, armature, selected, frame_start, rest=True)
+        rest_hand_axes = _read_rest_hand_axes(
+            bpy, mathutils, armature, rest, finger_selected, frame_start
+        )
         frames = []
         for index, blender_frame in enumerate(
             _sample_frames(frame_start, frame_end, source_fps, output_fps)
@@ -124,6 +127,8 @@ def main() -> int:
             "rest": rest,
             "frames": frames,
         }
+        if rest_hand_axes:
+            document["rest_hand_axes"] = rest_hand_axes
         args.output.write_text(json.dumps(document), encoding="utf-8")
         print(f"Wrote solved MMD motion: {args.output} ({len(frames)} frames @ {output_fps:g} fps)")
         return 0
@@ -339,6 +344,69 @@ def _read_pose(bpy, mathutils, armature, selected, frame, *, rest):  # type: ign
             world = evaluated.matrix_world @ pose_bone.matrix
             out[joint] = _pose_from_matrix(mathutils, world)
         return out
+    finally:
+        data.pose_position = previous
+
+
+def _read_rest_hand_axes(
+    bpy, mathutils, armature, rest, finger_selected, frame
+):  # type: ignore[no-untyped-def]
+    """Measure rest finger directions and palm normals from finger-base bones.
+
+    The wrist matrix carries all live wrist motion, but its bone-local axes are
+    model-specific. These two anatomical directions let the retargeter calibrate
+    the model wrist frame to the OpenVR controller frame without guessing palm
+    roll. Models without the three required finger bases use the arm fallback.
+    """
+    if finger_selected is None:
+        return {}
+
+    data = armature.data
+    previous = data.pose_position
+    data.pose_position = "REST"
+    try:
+        scene = bpy.context.scene
+        scene.frame_set(int(math.floor(frame)), subframe=frame - math.floor(frame))
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        depsgraph.update()
+        evaluated = armature.evaluated_get(depsgraph)
+        basis = _basis(mathutils)
+
+        def first_position(names):  # type: ignore[no-untyped-def]
+            for name in names:
+                pose_bone = evaluated.pose.bones.get(name)
+                if pose_bone is not None:
+                    world = evaluated.matrix_world @ pose_bone.matrix
+                    position = basis @ world.translation
+                    return mathutils.Vector((position.x, position.y, position.z))
+            return None
+
+        axes = {}
+        for side, device in (
+            ("left", "left_controller"),
+            ("right", "right_controller"),
+        ):
+            index = first_position(finger_selected[side]["index"])
+            middle = first_position(finger_selected[side]["middle"])
+            pinky = first_position(finger_selected[side]["pinky"])
+            if index is None or middle is None or pinky is None:
+                continue
+            wrist_values = rest[side + "_wrist"]["p"]
+            wrist = mathutils.Vector(wrist_values)
+            finger = middle - wrist
+            palm = (index - wrist).cross(pinky - wrist)
+            # Mirrored hand topology reverses the cross-product direction.
+            if side == "left":
+                palm.negate()
+            if finger.length < 1e-9 or palm.length < 1e-9:
+                continue
+            finger.normalize()
+            palm.normalize()
+            axes[device] = {
+                "finger": list(finger),
+                "palm": list(palm),
+            }
+        return axes
     finally:
         data.pose_position = previous
 

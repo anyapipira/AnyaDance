@@ -38,8 +38,10 @@ model and motion, lets MMD Tools evaluate the pose, and
 writes **one** JSON file (reused/overwritten each export, under
 `%TEMP%\AnyaDance\mmd_solved.json`) holding, per frame, the world-space
 pose of head, shoulders, elbows, wrists, pelvis, ankles and toes, plus per-hand
-finger curls. Output is in the same convention the driver uses: right-handed,
-`+Y` up, `-Z` forward, metres, quaternions `xyzw`, the avatar's left on `-X`.
+finger curls. When the model has the required finger bones, it also records each
+rest hand's finger direction and palm normal for controller-frame calibration.
+Output is in the same convention the driver uses: right-handed, `+Y` up, `-Z`
+forward, metres, quaternions `xyzw`, the avatar's left on `-X`.
 
 ## The simplified remap
 
@@ -52,16 +54,18 @@ correspondingly small (`src/core/mmd_retarget.cpp`):
 - **Scale to height.** The body is scaled so its standing height matches the
   target height (`1.5 m`, the rig's HMD height `kResetHmdY`).
 - **Direct device placement.** Each device follows its driving joint: HMD ← head
-  (nudged up to the crown), hip ← pelvis, feet ← ankles, hands ← wrists. Hands
-  target the palm (wrist extended along the forearm) and are stretched a little
-  about the shoulder (**Hand reach**) so VRChat IK gets an extended-arm target.
+  (nudged up to the crown), hip ← pelvis, feet ← ankles, hands ← wrists. The palm
+  offset is calibrated in wrist-local rest space, so it follows live wrist
+  flexion, and is stretched a little about the shoulder (**Hand reach**) so
+  VRChat IK gets an extended-arm target.
 - **HMD/hip/feet rotation as deltas.** Orientation is the joint's rotation
   *relative to the model's rest pose* applied to the clean upright/forward device
   rest, keeping those devices in a stable rest frame.
-- **Controller orientation from the forearm**. A solved wrist quaternion is the
-  model bone's frame. The controller's neutral index-finger axis is aligned to the
-  elbow→wrist forearm, and the roll about it comes from the wrist rotation via a
-  wrist-local twist axis calibrated at the rest pose.
+- **Controller orientation from the solved wrist.** The model-specific wrist bone
+  frame is calibrated to the OpenVR controller frame at rest, then follows the
+  solved wrist rigidly so flexion, deviation, and roll all survive. Exported rest
+  finger/palm axes set the absolute palm roll; models without them fall back to
+  an arm-anatomy rest frame.
 - **Fingers.** When the model has finger bones, per-hand curls drive the
   controllers' skeletal hand pose.
 

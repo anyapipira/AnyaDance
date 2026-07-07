@@ -86,6 +86,22 @@ bool ReadFingers(const Value* value, std::array<float, 5>& out) {
     return true;
 }
 
+bool ReadHandAxes(const Value* value, SolvedHandAxes& out) {
+    if (value == nullptr || !value->IsObject() ||
+        !ReadVec3(value->Find("finger"), out.finger) ||
+        !ReadVec3(value->Find("palm"), out.palm)) {
+        return false;
+    }
+    const auto lengthSquared = [](Vec3 value) {
+        return value.x * value.x + value.y * value.y + value.z * value.z;
+    };
+    if (lengthSquared(out.finger) < 1e-8f || lengthSquared(out.palm) < 1e-8f) {
+        return false;
+    }
+    out.valid = true;
+    return true;
+}
+
 } // namespace
 
 bool ParseSolvedMotion(const std::string& jsonText, SolvedMotion& out, std::string& error) {
@@ -114,6 +130,14 @@ bool ParseSolvedMotion(const std::string& jsonText, SolvedMotion& out, std::stri
             return false;
         }
         motion.hasRest = true;
+    }
+
+    // New solves include a model-derived rest hand frame. Keep this optional so
+    // solved JSON produced by older AnyaDance builds remains loadable. A malformed
+    // per-hand hint is ignored and the retargeter falls back to arm anatomy.
+    if (const Value* axes = root.Find("rest_hand_axes"); axes != nullptr && axes->IsObject()) {
+        ReadHandAxes(axes->Find("left_controller"), motion.restHandAxes[0]);
+        ReadHandAxes(axes->Find("right_controller"), motion.restHandAxes[1]);
     }
 
     const Value* frames = root.Find("frames");

@@ -82,18 +82,15 @@ struct DanceLocal {
 
 Vec3 LocalPos(const DanceLocal& dl, const SolvedJoint& joint) { return dl.Apply(joint).position; }
 
-// Hand target: extend the wrist along the forearm to the palm, then stretch about
-// the shoulder so VRChat IK fully extends the arm.
-Vec3 HandAnchor(Vec3 wrist, Vec3 elbow, Vec3 shoulder, float reach) {
-    const Vec3 palm = Add(wrist, Scale(Sub(wrist, elbow), kPalmForearmRatio));
+// Stretch a palm point about the shoulder so VRChat IK fully extends the arm.
+Vec3 HandAnchor(Vec3 palm, Vec3 shoulder, float reach) {
     return Add(shoulder, Scale(Sub(palm, shoulder), reach));
 }
 
-// --- Controller orientation, adapted from the earlier MMD retarget prototype ---
-// A solved wrist quaternion is the model bone's frame. The controller's neutral
-// index-finger axis is aligned to the elbow->wrist forearm, and the roll about it
-// comes from the wrist rotation via a wrist-local twist axis calibrated at the
-// rest pose.
+// --- Controller orientation ---
+// The solved wrist matrix contains the hand's full motion, but its local axes are
+// model-specific. Calibrate the OpenVR controller basis in wrist-local rest space,
+// then rigidly follow the live wrist so flexion, deviation, and twist survive.
 
 const Vec3 kBodyForward{0.0f, 0.0f, -1.0f};
 const Vec3 kBodyUp{0.0f, 1.0f, 0.0f};
@@ -104,6 +101,10 @@ const Vec3 kControllerLocalForward{0.0f, 0.0f, -1.0f};
 // hand skeleton as the driver, so the same axis applies here.
 const Vec3 kNeutralIndexLeft{0.11569004f, -0.51338429f, -0.85032487f};
 const Vec3 kNeutralIndexRight{-0.11569004f, -0.51338429f, -0.85032487f};
+// Open-palm normal in the same native controller skeleton, derived from the
+// direction the neutral index finger curls toward.
+const Vec3 kNeutralPalmLeft{0.9783916f, -0.0887937f, 0.1867233f};
+const Vec3 kNeutralPalmRight{-0.9783916f, -0.0887937f, 0.1867233f};
 
 float Dot(Vec3 a, Vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 Vec3 Cross(Vec3 a, Vec3 b) {
@@ -202,20 +203,12 @@ Vec3 ControllerReferenceTwistAxis(Vec3 shoulder, Vec3 elbow, Vec3 wrist) {
     return BestPerpendicular(candidates, 5, fingerAxis);
 }
 
-// Build the OpenVR controller orientation from the forearm direction plus the
-// wrist-driven roll. wristTwistAxisLocal is the rest twist reference expressed in
-// the wrist's local frame, so rotating it by the live wrist gives the live roll.
-Quat ControllerRotationFromForearm(Vec3 shoulder, Vec3 elbow, Vec3 wrist, Quat wristRotation,
-                                   Vec3 wristTwistAxisLocal, bool isLeft) {
+// Build the rest OpenVR controller orientation from arm anatomy. This fallback
+// recovers the finger direction when an older solve has no exported hand frame;
+// the palm roll remains heuristic in that case.
+Quat ControllerRestRotationFromForearm(Vec3 shoulder, Vec3 elbow, Vec3 wrist, bool isLeft) {
     const Vec3 fingerAxis = NormalizeVec(Sub(wrist, elbow), {0.0f, -1.0f, 0.0f});
-    const Vec3 upperToShoulder = NormalizeVec(Sub(shoulder, elbow), {0.0f, 1.0f, 0.0f});
-    Vec3 handForward;
-    if (!ProjectPerp(Rotate(wristRotation, wristTwistAxisLocal), fingerAxis, 1e-4f, handForward)) {
-        if (!ProjectPerp(upperToShoulder, fingerAxis, 1e-4f, handForward)) {
-            const Vec3 candidates[] = {kBodyForward, kBodyUp, kBodyRight, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}};
-            handForward = BestPerpendicular(candidates, 5, fingerAxis);
-        }
-    }
+    const Vec3 handForward = ControllerReferenceTwistAxis(shoulder, elbow, wrist);
     const Vec3 neutralIndex = isLeft ? kNeutralIndexLeft : kNeutralIndexRight;
     return BasisMappingToQuat(neutralIndex, kControllerLocalForward, fingerAxis, handForward);
 }
@@ -294,19 +287,40 @@ DanceMotion BuildDanceMotion(const SolvedMotion& motion, const MmdRetargetParams
             Conjugate(restLocal[JointSlot(map.joint)].rotation);
     }
 
-    // Controller roll calibration: store each hand's rest twist reference in its
-    // wrist-local frame so the per-frame wrist rotation reproduces the roll.
-    const auto calibrateTwist = [&](SolvedJointId shoulder, SolvedJointId elbow, SolvedJointId wrist) {
-        const Vec3 reference = ControllerReferenceTwistAxis(
-            restLocal[JointSlot(shoulder)].position,
-            restLocal[JointSlot(elbow)].position,
-            restLocal[JointSlot(wrist)].position);
-        return NormalizeVec(Rotate(Conjugate(restLocal[JointSlot(wrist)].rotation), reference),
-                            {0.0f, 0.0f, -1.0f});
+    // Express each desired OpenVR controller rest basis and straight-hand palm
+    // offset in the source wrist bone's local frame. The live wrist can then move
+    // both rigidly, preserving wrist flexion instead of pinning them to the
+    // elbow->wrist line on every frame.
+    std::array<Quat, 2> controllerBasisInWrist{};
+    std::array<Vec3, 2> palmOffsetInWrist{};
+    const auto calibrateHand = [&](std::size_t hand, SolvedJointId shoulder,
+                                   SolvedJointId elbow, SolvedJointId wrist) {
+        const SolvedJoint& wristRest = restLocal[JointSlot(wrist)];
+        const Quat invWristRest = Conjugate(wristRest.rotation);
+        const bool isLeft = hand == 0;
+        const SolvedHandAxes& exportedAxes = motion.restHandAxes[hand];
+        Quat restBasis;
+        if (exportedAxes.valid) {
+            const Vec3 neutralIndex = isLeft ? kNeutralIndexLeft : kNeutralIndexRight;
+            const Vec3 neutralPalm = isLeft ? kNeutralPalmLeft : kNeutralPalmRight;
+            restBasis = BasisMappingToQuat(
+                neutralIndex, neutralPalm, exportedAxes.finger, exportedAxes.palm);
+        } else {
+            restBasis = ControllerRestRotationFromForearm(
+                restLocal[JointSlot(shoulder)].position,
+                restLocal[JointSlot(elbow)].position,
+                wristRest.position,
+                isLeft);
+        }
+        controllerBasisInWrist[hand] = Normalized(Multiply(invWristRest, restBasis));
+        palmOffsetInWrist[hand] = Rotate(
+            invWristRest,
+            Scale(Sub(wristRest.position, restLocal[JointSlot(elbow)].position),
+                  kPalmForearmRatio));
     };
-    const Vec3 leftTwistAxis = calibrateTwist(
+    calibrateHand(0,
         SolvedJointId::LeftShoulder, SolvedJointId::LeftElbow, SolvedJointId::LeftWrist);
-    const Vec3 rightTwistAxis = calibrateTwist(
+    calibrateHand(1,
         SolvedJointId::RightShoulder, SolvedJointId::RightElbow, SolvedJointId::RightWrist);
 
     dance.times.reserve(motion.frames.size());
@@ -327,17 +341,19 @@ DanceMotion BuildDanceMotion(const SolvedMotion& motion, const MmdRetargetParams
         const SolvedJoint pelvis = dl.Apply(src.joints[JointSlot(SolvedJointId::Pelvis)]);
         const SolvedJoint lAnkle = dl.Apply(src.joints[JointSlot(SolvedJointId::LeftAnkle)]);
         const SolvedJoint rAnkle = dl.Apply(src.joints[JointSlot(SolvedJointId::RightAnkle)]);
-        const Vec3 lWrist = LocalPos(dl, src.joints[JointSlot(SolvedJointId::LeftWrist)]);
-        const Vec3 rWrist = LocalPos(dl, src.joints[JointSlot(SolvedJointId::RightWrist)]);
-        const Vec3 lElbow = LocalPos(dl, src.joints[JointSlot(SolvedJointId::LeftElbow)]);
-        const Vec3 rElbow = LocalPos(dl, src.joints[JointSlot(SolvedJointId::RightElbow)]);
         const Vec3 lShoulder = LocalPos(dl, src.joints[JointSlot(SolvedJointId::LeftShoulder)]);
         const Vec3 rShoulder = LocalPos(dl, src.joints[JointSlot(SolvedJointId::RightShoulder)]);
         const SolvedJoint lWristJoint = dl.Apply(src.joints[JointSlot(SolvedJointId::LeftWrist)]);
         const SolvedJoint rWristJoint = dl.Apply(src.joints[JointSlot(SolvedJointId::RightWrist)]);
 
-        const Vec3 lHand = HandAnchor(lWrist, lElbow, lShoulder, params.handReachScale);
-        const Vec3 rHand = HandAnchor(rWrist, rElbow, rShoulder, params.handReachScale);
+        const Vec3 lPalm = Add(
+            lWristJoint.position,
+            Rotate(lWristJoint.rotation, palmOffsetInWrist[0]));
+        const Vec3 rPalm = Add(
+            rWristJoint.position,
+            Rotate(rWristJoint.rotation, palmOffsetInWrist[1]));
+        const Vec3 lHand = HandAnchor(lPalm, lShoulder, params.handReachScale);
+        const Vec3 rHand = HandAnchor(rPalm, rShoulder, params.handReachScale);
 
         // Positions: scaled dance-local joint (palm anchor for hands), plus the
         // small head mount lift and the global floor offset.
@@ -364,12 +380,12 @@ DanceMotion BuildDanceMotion(const SolvedMotion& motion, const MmdRetargetParams
         frame.devices[DeviceSlot(DeviceIndex::Hip)].rotation = deltaRot(DeviceIndex::Hip, pelvis);
         frame.devices[DeviceSlot(DeviceIndex::LeftFoot)].rotation = deltaRot(DeviceIndex::LeftFoot, lAnkle);
         frame.devices[DeviceSlot(DeviceIndex::RightFoot)].rotation = deltaRot(DeviceIndex::RightFoot, rAnkle);
-        // Controllers: orient from the forearm (elbow->wrist) with wrist-driven
-        // roll, so the OpenVR index axis points down the arm and VRChat IK solves.
+        // Controllers rigidly follow the solved wrist through the wrist-local
+        // basis calibrated above, preserving flexion, deviation, and roll.
         frame.devices[DeviceSlot(DeviceIndex::LeftController)].rotation =
-            ControllerRotationFromForearm(lShoulder, lElbow, lWrist, lWristJoint.rotation, leftTwistAxis, true);
+            Normalized(Multiply(lWristJoint.rotation, controllerBasisInWrist[0]));
         frame.devices[DeviceSlot(DeviceIndex::RightController)].rotation =
-            ControllerRotationFromForearm(rShoulder, rElbow, rWrist, rWristJoint.rotation, rightTwistAxis, false);
+            Normalized(Multiply(rWristJoint.rotation, controllerBasisInWrist[1]));
 
         if (src.hasFingers) {
             ControllerState& left = frame.controllers[0];

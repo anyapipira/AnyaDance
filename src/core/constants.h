@@ -22,6 +22,9 @@ inline constexpr int kProtocolVersion = 1;
 inline constexpr int kMaxPacketBytes = 8192;
 inline constexpr float kMaxAbsPositionMeters = 10.0f;
 inline constexpr float kMaxDeviceY = 2.0f;
+// The HMD (only) also has a floor: dragging cannot take its Y below 0. Other
+// devices may go negative, e.g. feet posed below a floor offset.
+inline constexpr float kMinHmdY = 0.0f;
 inline constexpr int kStreamRateHz = 60;
 
 inline constexpr float kResetHmdY = 1.50f;

@@ -1,6 +1,7 @@
 #include "core/manipulation.h"
 
 #include <algorithm>
+#include <limits>
 
 namespace anyadance {
 namespace {
@@ -34,14 +35,20 @@ Vec3 Subtract(Vec3 lhs, Vec3 rhs) {
 }
 
 // Translate Y by the accumulated vertical drag, clamped to the shared kMaxDeviceY
-// ceiling. When the target overshoots the ceiling, re-anchor the accumulator to
-// the exact cap so a reversed drag descends immediately from 2 m, instead of
-// first unwinding overshoot that never moved the (already clamped) device.
-float ClampedDragY(float startY, float& accumulatedDy) {
+// ceiling and an optional per-caller floor (the HMD passes kMinHmdY; other
+// devices have no floor). When the target overshoots either bound, re-anchor the
+// accumulator to the exact bound so a reversed drag moves away immediately,
+// instead of first unwinding overshoot that never moved the (already clamped)
+// device.
+float ClampedDragY(float startY, float& accumulatedDy,
+                   float floorY = std::numeric_limits<float>::lowest()) {
     float targetY = startY - accumulatedDy * kTranslationMetersPerCount;
     if (targetY > kMaxDeviceY) {
         accumulatedDy = (startY - kMaxDeviceY) / kTranslationMetersPerCount;
         targetY = kMaxDeviceY;
+    } else if (targetY < floorY) {
+        accumulatedDy = (startY - floorY) / kTranslationMetersPerCount;
+        targetY = floorY;
     }
     return targetY;
 }
@@ -85,8 +92,9 @@ void ApplyDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, float
         } else if (shift) {
             // The head allows vertical (Y) translation; horizontal and depth stay
             // locked so the play-space origin does not drift. Y is clamped to the
-            // shared kMaxDeviceY ceiling, like every other device.
-            device.position.y = ClampedDragY(drag.startFrame.devices[slot].position.y, drag.accumulatedDy);
+            // shared kMaxDeviceY ceiling, like every other device, and to the
+            // HMD-only kMinHmdY floor.
+            device.position.y = ClampedDragY(drag.startFrame.devices[slot].position.y, drag.accumulatedDy, kMinHmdY);
             device.y_clamped = device.position.y >= kMaxDeviceY &&
                                drag.startFrame.devices[slot].position.y != device.position.y;
         } else {
@@ -149,12 +157,16 @@ void ApplyRigDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, fl
 
     // Vertical move: shift the whole rig on world Y. Clamping the highest device
     // through ClampedDragY re-anchors the accumulator at the ceiling, so the
-    // rig's shape is preserved and a reversed drag descends immediately.
+    // rig's shape is preserved and a reversed drag descends immediately. The
+    // rig's floor is the HMD's kMinHmdY; expressing it in the highest device's
+    // terms lets the same clamp (and re-anchoring) handle both bounds.
     float highestStartY = drag.startFrame.devices[0].position.y;
     for (const DeviceState& start : drag.startFrame.devices) {
         highestStartY = std::max(highestStartY, start.position.y);
     }
-    const float deltaY = ClampedDragY(highestStartY, drag.accumulatedDy) - highestStartY;
+    const float hmdStartY = drag.startFrame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y;
+    const float rigFloorY = kMinHmdY + (highestStartY - hmdStartY);
+    const float deltaY = ClampedDragY(highestStartY, drag.accumulatedDy, rigFloorY) - highestStartY;
     for (std::size_t slot = 0; slot < frame.devices.size(); ++slot) {
         const DeviceState& start = drag.startFrame.devices[slot];
         DeviceState device = start;

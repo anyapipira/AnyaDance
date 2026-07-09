@@ -82,7 +82,8 @@ int ModifiersForCaptureButton(int captureButton) {
         return ManipulationModifier_Ctrl | (rightDown ? ManipulationModifier_Shift : 0);
     }
     if (captureButton == VK_RBUTTON) {
-        // Rig drag started with RMB: vertical move, or roll while MMB is chorded.
+        // Drag started with RMB (rig or HMD): vertical move, or roll while MMB
+        // is chorded.
         return ManipulationModifier_Shift | (IsKeyDown(VK_MBUTTON) ? ManipulationModifier_Ctrl : 0);
     }
     if (captureButton == VK_LBUTTON && rightDown) {

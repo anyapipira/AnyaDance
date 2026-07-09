@@ -47,6 +47,17 @@ void TestUiLayout() {
         EXPECT_TRUE(GetClientRect(window, &client) != FALSE);
         EXPECT_TRUE(client.right - client.left >= testClientWidth);
         EXPECT_TRUE(client.bottom - client.top >= testClientHeight);
+
+        // While minimized, the iconic rects (about 160x31 with an empty client
+        // area) must not be used to estimate the frame. The conversion has to
+        // match the style-based value, or the WM_GETMINMAXINFO sent during a
+        // restore would clamp the window to an inflated minimum width.
+        ShowWindow(window, SW_SHOWMINNOACTIVE);
+        EXPECT_TRUE(IsIconic(window) != FALSE);
+        const SIZE minimizedOuter = OuterWindowSizeForClient(window, testClientWidth, testClientHeight);
+        EXPECT_TRUE(minimizedOuter.cx == testOuter.cx);
+        EXPECT_TRUE(minimizedOuter.cy == testOuter.cy);
+
         DestroyWindow(window);
     }
 

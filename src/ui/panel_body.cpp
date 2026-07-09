@@ -55,6 +55,10 @@ void DeviceBox(HWND hwnd, DeviceIndex deviceIndex, ImVec2 size, bool miniMode = 
     const bool hovered = ImGui::IsItemHovered();
     const bool leftClicked = hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
     const bool middleClicked = hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Middle);
+    // RMB alone drags the HMD vertically, matching the rig's RMB gesture. Other
+    // devices keep RMB as a chord modifier only (Z move / roll).
+    const bool rightClicked = hovered && deviceIndex == DeviceIndex::Hmd &&
+                              ImGui::IsMouseClicked(ImGuiMouseButton_Right);
     const ImVec2 min = ImGui::GetItemRectMin();
     const ImVec2 max = ImGui::GetItemRectMax();
     ImDrawList* draw = ImGui::GetWindowDrawList();
@@ -97,6 +101,8 @@ void DeviceBox(HWND hwnd, DeviceIndex deviceIndex, ImVec2 size, bool miniMode = 
         BeginMouseCapture(hwnd, deviceIndex, VK_LBUTTON);
     } else if (middleClicked) {
         BeginMouseCapture(hwnd, deviceIndex, VK_MBUTTON);
+    } else if (rightClicked) {
+        BeginMouseCapture(hwnd, deviceIndex, VK_RBUTTON);
     }
 }
 

@@ -57,7 +57,7 @@ Changing registration or startup settings requires restarting SteamVR.
 
 ## Unregister
 
-For a release installation, click **Unregister Driver**, then confirm the **Restart SteamVR** prompt. Do this before moving or deleting the extracted folder.
+For a release installation, click **Unregister Driver**, then click **Restart SteamVR** to apply the change. Do this before moving or deleting the extracted folder.
 
 For a source installation, the equivalent scripts are:
 

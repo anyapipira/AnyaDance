@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Unregister Driver no longer opens the Restart SteamVR confirmation; unregistering only edits configuration files, and the status line already points to the separate Restart SteamVR button to apply the change.
+
 ## Initial public release
 
 - Windows SteamVR/OpenVR virtual-device driver with six devices: HMD, two controllers, hip tracker, and two foot trackers.

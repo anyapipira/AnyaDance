@@ -29,6 +29,15 @@ struct DragSnapshot {
 DragSnapshot BeginDrag(const FrameState& frame, DeviceIndex device);
 void ApplyDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, float dyCounts, int modifiers,
                     ManipulationFrame manipulationFrame = ManipulationFrame::Hmd);
+
+// Manipulate all six devices as one rigid rig. Rotations pivot about the HMD's
+// start position; the vertical move keeps the rig's shape and clamps the whole
+// rig when its highest device reaches the kMaxDeviceY ceiling.
+//   Ctrl        -> yaw (dx) and pitch (dy) the rig
+//   Ctrl|Shift  -> roll the rig (dx)
+//   Shift       -> move the rig vertically (dy)
+void ApplyRigDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, float dyCounts, int modifiers,
+                       ManipulationFrame manipulationFrame = ManipulationFrame::Hmd);
 bool MirroredDeviceFor(DeviceIndex device, DeviceIndex& mirroredDevice);
 void ApplySymmetricMirror(const DragSnapshot& drag, FrameState& frame, DeviceIndex mirroredDevice,
                           ManipulationFrame manipulationFrame = ManipulationFrame::Hmd);

@@ -297,6 +297,7 @@ struct AppState {
     POINT lastMouse{};
     DragSnapshot drag{};
     DeviceIndex dragDevice = DeviceIndex::Hmd;
+    bool dragRig = false;  // capture moves/rotates the whole rig, not dragDevice
     int captureButton = VK_LBUTTON;
     ManipulationFrame manipulationFrame = ManipulationFrame::Hmd;
     int captureModifiers = ManipulationModifier_None;
@@ -367,6 +368,7 @@ void HandleFocusLost();
 void ReleaseMouseCapture();
 bool IsKeyDown(int vk);
 void BeginMouseCapture(HWND hwnd, DeviceIndex device, int captureButton);
+void BeginRigMouseCapture(HWND hwnd, int captureButton);
 void UpdateCapture(HWND hwnd);
 void ApplyFingerBend(FrameState& frame);
 FrameState FrameWithCurrentFingerBends();

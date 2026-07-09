@@ -1,5 +1,7 @@
 #include "core/manipulation.h"
 
+#include <algorithm>
+
 namespace anyadance {
 namespace {
 
@@ -110,6 +112,56 @@ void ApplyDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, float
     device.position.y = ClampDeviceY(device.position.y);
     device.y_clamped = device.position.y >= kMaxDeviceY && drag.startFrame.devices[slot].position.y != device.position.y;
     frame.devices[slot] = device;
+}
+
+void ApplyRigDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, float dyCounts, int modifiers,
+                       ManipulationFrame manipulationFrame) {
+    drag.accumulatedDx += dxCounts;
+    drag.accumulatedDy += dyCounts;
+
+    const bool ctrl = (modifiers & ManipulationModifier_Ctrl) != 0;
+    const bool shift = (modifiers & ManipulationModifier_Shift) != 0;
+    const Quat basis = manipulationFrame == ManipulationFrame::Global ? FromYaw(0.0f) : FromYaw(drag.hmdYawBasis);
+    const Vec3 pivot = drag.startFrame.devices[DeviceSlot(DeviceIndex::Hmd)].position;
+
+    if (ctrl) {
+        // Ctrl+Shift rolls; Ctrl alone yaws/pitches. Same per-count scale and
+        // pitch clamp as the single-device gestures, rotating positions and
+        // orientations together about the HMD pivot so the rig stays rigid.
+        const bool roll = shift;
+        const float yawRadians = roll ? 0.0f : -drag.accumulatedDx * DegToRad(kRotationDegreesPerCount);
+        const float pitchRadians = roll ? 0.0f
+            : DegToRad(ClampFloat(-drag.accumulatedDy * kRotationDegreesPerCount, -kPitchLimitDegrees, kPitchLimitDegrees));
+        const float rollRadians = roll ? drag.accumulatedDx * DegToRad(kRotationDegreesPerCount) : 0.0f;
+        const Quat delta = RotationDelta(yawRadians, pitchRadians, rollRadians);
+        const Quat deltaInBasis = Normalized(Multiply(Multiply(basis, delta), Conjugate(basis)));
+        for (std::size_t slot = 0; slot < frame.devices.size(); ++slot) {
+            const DeviceState& start = drag.startFrame.devices[slot];
+            DeviceState device = start;
+            device.position = Add(pivot, Rotate(deltaInBasis, Subtract(start.position, pivot)));
+            device.rotation = Normalized(Multiply(deltaInBasis, start.rotation));
+            device.position.y = ClampDeviceY(device.position.y);
+            device.y_clamped = device.position.y >= kMaxDeviceY && start.position.y != device.position.y;
+            frame.devices[slot] = device;
+        }
+        return;
+    }
+
+    // Vertical move: shift the whole rig on world Y. Clamping the highest device
+    // through ClampedDragY re-anchors the accumulator at the ceiling, so the
+    // rig's shape is preserved and a reversed drag descends immediately.
+    float highestStartY = drag.startFrame.devices[0].position.y;
+    for (const DeviceState& start : drag.startFrame.devices) {
+        highestStartY = std::max(highestStartY, start.position.y);
+    }
+    const float deltaY = ClampedDragY(highestStartY, drag.accumulatedDy) - highestStartY;
+    for (std::size_t slot = 0; slot < frame.devices.size(); ++slot) {
+        const DeviceState& start = drag.startFrame.devices[slot];
+        DeviceState device = start;
+        device.position.y = ClampDeviceY(start.position.y + deltaY);
+        device.y_clamped = device.position.y >= kMaxDeviceY && start.position.y != device.position.y;
+        frame.devices[slot] = device;
+    }
 }
 
 bool MirroredDeviceFor(DeviceIndex device, DeviceIndex& mirroredDevice) {

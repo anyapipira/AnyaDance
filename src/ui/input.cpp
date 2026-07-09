@@ -81,6 +81,10 @@ int ModifiersForCaptureButton(int captureButton) {
     if (captureButton == VK_MBUTTON) {
         return ManipulationModifier_Ctrl | (rightDown ? ManipulationModifier_Shift : 0);
     }
+    if (captureButton == VK_RBUTTON) {
+        // Rig drag started with RMB: vertical move, or roll while MMB is chorded.
+        return ManipulationModifier_Shift | (IsKeyDown(VK_MBUTTON) ? ManipulationModifier_Ctrl : 0);
+    }
     if (captureButton == VK_LBUTTON && rightDown) {
         return ManipulationModifier_Shift;
     }
@@ -89,6 +93,7 @@ int ModifiersForCaptureButton(int captureButton) {
 
 void BeginMouseCapture(HWND hwnd, DeviceIndex device, int captureButton) {
     g_app.captureActive = true;
+    g_app.dragRig = false;
     g_app.dragDevice = device;
     g_app.captureButton = captureButton;
     g_app.captureModifiers = ModifiersForCaptureButton(captureButton);
@@ -97,6 +102,14 @@ void BeginMouseCapture(HWND hwnd, DeviceIndex device, int captureButton) {
     SetCapture(hwnd);
     while (ShowCursor(FALSE) >= 0) {}
     g_app.cursorHidden = true;
+}
+
+// Start a whole-rig drag from the empty body-panel area. The snapshot device is
+// irrelevant for a rig drag; BeginDrag captures the full frame and the HMD yaw
+// basis, which is all ApplyRigDragDelta uses.
+void BeginRigMouseCapture(HWND hwnd, int captureButton) {
+    BeginMouseCapture(hwnd, DeviceIndex::Hmd, captureButton);
+    g_app.dragRig = true;
 }
 
 bool MirrorEnabledFor(DeviceIndex device) {
@@ -138,6 +151,11 @@ void UpdateCapture(HWND hwnd) {
         g_app.captureModifiers = modifiers;
     }
     if (dx != 0.0f || dy != 0.0f) {
+        if (g_app.dragRig) {
+            ApplyRigDragDelta(g_app.drag, g_app.frame, dx, dy, modifiers, g_app.manipulationFrame);
+            g_app.streamer.UpdateFrame(g_app.frame, "Rig manipulated", true);
+            return;
+        }
         ApplyDragDelta(g_app.drag, g_app.frame, dx, dy, modifiers, g_app.manipulationFrame);
         DeviceIndex mirroredDevice = DeviceIndex::Hmd;
         if (MirrorEnabledFor(g_app.dragDevice) && MirroredDeviceFor(g_app.dragDevice, mirroredDevice)) {

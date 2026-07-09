@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Unregister Driver no longer opens the Restart SteamVR confirmation; unregistering only edits configuration files, and the status line already points to the separate Restart SteamVR button to apply the change.
+- The empty body-panel area now manipulates the whole rig: middle mouse drag rotates all six devices (yaw/pitch) about the HMD position, middle+right rolls them, and right mouse drag alone moves the rig vertically (clamped to the 2 m ceiling).
 
 ## Initial public release
 

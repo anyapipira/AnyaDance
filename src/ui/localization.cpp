@@ -34,7 +34,7 @@ const char* const kStrings[kTextCount][kLanguageCount] = {
     /* HmdHelp               */ {"HMD: rotate; LMB+RMB to move up/down", u8"头显：旋转；左键+右键上下移动"},
     /* KeyLine1              */ {"WASD Move | Q/E Turn | Space Jump | M Menu | V Voice", u8"WASD 移动 | Q/E 转向 | Space 跳跃 | M 菜单 | V 语音"},
     /* KeyLine2              */ {"Z Left Trigger | X Right Trigger | Wheel Fingers (hold 1-0 for one) | Full fist = grip", u8"Z 左扳机 | X 右扳机 | 滚轮开合手指（按住 1-0 控制单指）| 握拳=抓取"},
-    /* MouseHelp             */ {"On a box: LMB XY move | MMB pitch/yaw rotate | hold RMB with LMB/MMB for Z move/roll. Drag empty space = right stick (for radial menus)", u8"在方框上：左键XY移动 | 中键俯仰偏航旋转 | 同时按住右键Z移动/横滚旋转。在空白处拖拽=右摇杆（便于操作圆盘菜单）"},
+    /* MouseHelp             */ {"Box: LMB move XY | MMB rotate | +RMB move Z/roll. Empty: LMB right stick | MMB rotate rig | MMB+RMB roll rig | RMB rig up/down", u8"方框上：左键XY移动 | 中键旋转 | 加右键Z移动/横滚。空白处：左键=右摇杆 | 中键旋转全身 | 中键+右键横滚全身 | 右键升降全身"},
     /* Mirror                */ {"Mirror", u8"对称"},
     /* FrameLabel            */ {"Move/rotate", u8"移动/旋转参考系"},
     /* FrameHmd              */ {"HMD", u8"头显"},

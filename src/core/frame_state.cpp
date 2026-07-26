@@ -8,8 +8,8 @@ FrameState MakeNeutralFrame() {
     frame.devices[DeviceSlot(DeviceIndex::LeftController)] = {true, true, {-0.45f, 1.15f, 0.0f}, {}, false};
     frame.devices[DeviceSlot(DeviceIndex::RightController)] = {true, true, {0.45f, 1.15f, 0.0f}, {}, false};
     frame.devices[DeviceSlot(DeviceIndex::Hip)] = {true, true, {0.0f, 0.85f, 0.0f}, {}, false};
-    frame.devices[DeviceSlot(DeviceIndex::LeftFoot)] = {true, true, {-0.12f, -0.01f, 0.0f}, {}, false};
-    frame.devices[DeviceSlot(DeviceIndex::RightFoot)] = {true, true, {0.12f, -0.01f, 0.0f}, {}, false};
+    frame.devices[DeviceSlot(DeviceIndex::LeftFoot)] = {true, true, {-0.12f, 0.0f, 0.0f}, {}, false};
+    frame.devices[DeviceSlot(DeviceIndex::RightFoot)] = {true, true, {0.12f, 0.0f, 0.0f}, {}, false};
     return frame;
 }
 
@@ -46,10 +46,15 @@ void NeutralizeControllerInputs(FrameState& frame) {
 bool ClampFrameY(FrameState& frame) {
     bool anyClamped = false;
     for (DeviceState& device : frame.devices) {
+        const float originalX = device.position.x;
         const float originalY = device.position.y;
+        const float originalZ = device.position.z;
+        device.position.x = ClampFloat(device.position.x, -kMaxAbsPositionMeters, kMaxAbsPositionMeters);
         device.position.y = ClampDeviceY(device.position.y);
+        device.position.z = ClampFloat(device.position.z, -kMaxAbsPositionMeters, kMaxAbsPositionMeters);
         device.y_clamped = device.position.y != originalY;
-        anyClamped = anyClamped || device.y_clamped;
+        anyClamped = anyClamped || device.position.x != originalX || device.y_clamped ||
+                     device.position.z != originalZ;
     }
     return anyClamped;
 }

@@ -29,7 +29,7 @@ The SteamVR driver registers up to six devices:
 - left and right `knuckles` controllers
 - hip, left foot, and right foot generic trackers
 
-The driver starts a loopback UDP receiver on `127.0.0.1:39570`. Valid samples update per-device pose state. Invalid packets are ignored. The driver clamps device Y again after packet validation as a defense in depth.
+The driver starts a loopback UDP receiver on `127.0.0.1:39570`. Valid samples update per-device pose state. Invalid packets are ignored. The driver clamps device Y to the supported `0–25 m` range after validation as a defense in depth.
 
 All devices start valid at neutral poses and remain valid if packets stop. The driver reports the latest accepted pose as connected, valid, and `TrackingResult_Running_OK`.
 

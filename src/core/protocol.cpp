@@ -240,8 +240,8 @@ bool ParseDeviceSample(std::string_view devicesObject, std::string_view deviceId
     sample.valid = valid;
     sample.connected = connected;
     sample.position = position;
-    if (sample.position[1] > kMaxDeviceY) {
-        sample.position[1] = kMaxDeviceY;
+    if (sample.position[1] < kMinDeviceY || sample.position[1] > kMaxDeviceY) {
+        sample.position[1] = ClampDeviceY(sample.position[1]);
         sample.y_clamped = true;
     }
     sample.rotation_xyzw = rotation;

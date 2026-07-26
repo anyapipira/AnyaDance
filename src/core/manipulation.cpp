@@ -34,21 +34,19 @@ Vec3 Subtract(Vec3 lhs, Vec3 rhs) {
     return {lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
 }
 
-// Translate Y by the accumulated vertical drag, clamped to the shared kMaxDeviceY
-// ceiling and an optional per-caller floor (the HMD passes kMinHmdY; other
-// devices have no floor). When the target overshoots either bound, re-anchor the
-// accumulator to the exact bound so a reversed drag moves away immediately,
-// instead of first unwinding overshoot that never moved the (already clamped)
-// device.
+// Translate Y by the accumulated vertical drag, clamped to the shared device
+// range and an optional per-caller floor. When the target overshoots a bound,
+// re-anchor the accumulator so a reversed drag moves away immediately.
 float ClampedDragY(float startY, float& accumulatedDy,
                    float floorY = std::numeric_limits<float>::lowest()) {
     float targetY = startY - accumulatedDy * kTranslationMetersPerCount;
     if (targetY > kMaxDeviceY) {
         accumulatedDy = (startY - kMaxDeviceY) / kTranslationMetersPerCount;
         targetY = kMaxDeviceY;
-    } else if (targetY < floorY) {
-        accumulatedDy = (startY - floorY) / kTranslationMetersPerCount;
-        targetY = floorY;
+    } else if (targetY < std::max(floorY, kMinDeviceY)) {
+        const float minimumY = std::max(floorY, kMinDeviceY);
+        accumulatedDy = (startY - minimumY) / kTranslationMetersPerCount;
+        targetY = minimumY;
     }
     return targetY;
 }
@@ -91,12 +89,10 @@ void ApplyDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, float
             ApplyRotation(device, drag.startFrame.devices[slot].rotation, basis, 0.0f, 0.0f, drag.accumulatedDx);
         } else if (shift) {
             // The head allows vertical (Y) translation; horizontal and depth stay
-            // locked so the play-space origin does not drift. Y is clamped to the
-            // shared kMaxDeviceY ceiling, like every other device, and to the
-            // HMD-only kMinHmdY floor.
+            // locked so the play-space origin does not drift.
             device.position.y = ClampedDragY(drag.startFrame.devices[slot].position.y, drag.accumulatedDy, kMinHmdY);
-            device.y_clamped = device.position.y >= kMaxDeviceY &&
-                               drag.startFrame.devices[slot].position.y != device.position.y;
+            device.y_clamped = device.position.y != drag.startFrame.devices[slot].position.y &&
+                               (device.position.y == kMinDeviceY || device.position.y == kMaxDeviceY);
         } else {
             ApplyRotation(device, drag.startFrame.devices[slot].rotation, basis, drag.accumulatedDx, drag.accumulatedDy, 0.0f);
         }
@@ -118,7 +114,7 @@ void ApplyDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, float
     }
 
     device.position.y = ClampDeviceY(device.position.y);
-    device.y_clamped = device.position.y >= kMaxDeviceY && drag.startFrame.devices[slot].position.y != device.position.y;
+    device.y_clamped = device.position.y != drag.startFrame.devices[slot].position.y;
     frame.devices[slot] = device;
 }
 
@@ -149,29 +145,29 @@ void ApplyRigDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, fl
             device.position = Add(pivot, Rotate(deltaInBasis, Subtract(start.position, pivot)));
             device.rotation = Normalized(Multiply(deltaInBasis, start.rotation));
             device.position.y = ClampDeviceY(device.position.y);
-            device.y_clamped = device.position.y >= kMaxDeviceY && start.position.y != device.position.y;
+            device.y_clamped = device.position.y != start.position.y;
             frame.devices[slot] = device;
         }
         return;
     }
 
-    // Vertical move: shift the whole rig on world Y. Clamping the highest device
-    // through ClampedDragY re-anchors the accumulator at the ceiling, so the
-    // rig's shape is preserved and a reversed drag descends immediately. The
-    // rig's floor is the HMD's kMinHmdY; expressing it in the highest device's
-    // terms lets the same clamp (and re-anchoring) handle both bounds.
+    // Vertical move: shift the whole rig on world Y. Express the bounds in the
+    // highest device's terms so the rig remains rigid within the shared Y range.
     float highestStartY = drag.startFrame.devices[0].position.y;
     for (const DeviceState& start : drag.startFrame.devices) {
         highestStartY = std::max(highestStartY, start.position.y);
     }
-    const float hmdStartY = drag.startFrame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y;
-    const float rigFloorY = kMinHmdY + (highestStartY - hmdStartY);
+    float lowestStartY = drag.startFrame.devices[0].position.y;
+    for (const DeviceState& start : drag.startFrame.devices) {
+        lowestStartY = std::min(lowestStartY, start.position.y);
+    }
+    const float rigFloorY = kMinDeviceY + (highestStartY - lowestStartY);
     const float deltaY = ClampedDragY(highestStartY, drag.accumulatedDy, rigFloorY) - highestStartY;
     for (std::size_t slot = 0; slot < frame.devices.size(); ++slot) {
         const DeviceState& start = drag.startFrame.devices[slot];
         DeviceState device = start;
         device.position.y = ClampDeviceY(start.position.y + deltaY);
-        device.y_clamped = device.position.y >= kMaxDeviceY && start.position.y != device.position.y;
+        device.y_clamped = device.position.y != start.position.y + deltaY;
         frame.devices[slot] = device;
     }
 }
@@ -209,7 +205,7 @@ void ApplySymmetricMirror(const DragSnapshot& drag, FrameState& frame, DeviceInd
     activeLocal.x = -activeLocal.x;
     mirrored.position = Add(origin, Rotate(yawBasis, activeLocal));
     mirrored.position.y = ClampDeviceY(mirrored.position.y);
-    mirrored.y_clamped = mirrored.position.y >= kMaxDeviceY;
+    mirrored.y_clamped = mirrored.position.y != active.position.y;
     mirrored.rotation = MirrorRotationInYawBasis(active.rotation, yawBasisRadians);
 
     frame.devices[mirroredSlot] = mirrored;

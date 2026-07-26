@@ -88,7 +88,7 @@ float ClampFloat(float value, float low, float high) {
 }
 
 float ClampDeviceY(float y) {
-    return std::min(y, kMaxDeviceY);
+    return ClampFloat(y, kMinDeviceY, kMaxDeviceY);
 }
 
 } // namespace anyadance

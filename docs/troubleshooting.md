@@ -59,5 +59,5 @@ Check:
 - datagram is smaller than 8192 bytes
 - device ID is one of the six recognized IDs
 - all required fields are present for the device
-- position values are finite and within +/-10 m before Y clamp
+- position values are finite and within +/-30 m; Y is within 0–25 m
 - quaternion order is XYZW and squared length is between 0.5 and 1.5

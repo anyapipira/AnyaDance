@@ -91,7 +91,7 @@ void DeviceBox(HWND hwnd, DeviceIndex deviceIndex, ImVec2 size, bool miniMode = 
         draw->AddText(textPos, IM_COL32(107, 203, 119, 255), Tr(Text::Capture));
         textPos.y += 18.0f;
     }
-    if (device.position.y >= kMaxDeviceY || device.y_clamped) {
+    if (device.position.y <= kMinDeviceY || device.position.y >= kMaxDeviceY || device.y_clamped) {
         draw->AddText(ImVec2(max.x - 56.0f, min.y + 8.0f), IM_COL32(255, 196, 87, 255), Tr(Text::YMax));
     }
     if (!miniMode && deviceIndex == DeviceIndex::Hmd) {

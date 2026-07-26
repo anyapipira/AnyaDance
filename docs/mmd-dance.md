@@ -102,7 +102,7 @@ on later runs (and on machines without Blender installed).
 
 A `.nya` file stores device-level frames (the six device poses plus per-hand
 finger bends), so it is the same format the main window uses for **Save Pose** /
-**Load Pose**: a pose is just a one-frame clip. Device Y is clamped to the 2 m
+**Load Pose**: a pose is just a one-frame clip. Device Y is clamped to the 0–25 m
 limit and finger bends to `[0, 1]` on load. See `src/core/nya_format.*`.
 
 ## Notes and limits

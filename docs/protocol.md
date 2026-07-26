@@ -200,15 +200,10 @@ A device entry is ignored if it has:
 
 Accepted quaternions are normalized before use.
 
-## Y Clamp
+## Position Limits
 
-All devices are clamped to a maximum Y of `2.0 m`:
-
-```cpp
-position.y = std::min(position.y, 2.0f);
-```
-
-The clamp applies to Y. The companion UI clamps before serialization. The native driver clamps again after packet validation and rate-limits repeated clamp warnings.
+All position components must be finite and within `±30 m`. Device Y is further
+clamped to the `0–25 m` range by both the companion UI and the driver.
 
 ## Pose Liveness
 

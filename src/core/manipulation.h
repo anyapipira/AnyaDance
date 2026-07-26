@@ -31,8 +31,8 @@ void ApplyDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, float
                     ManipulationFrame manipulationFrame = ManipulationFrame::Hmd);
 
 // Manipulate all six devices as one rigid rig. Rotations pivot about the HMD's
-// start position; the vertical move keeps the rig's shape and clamps the whole
-// rig when its highest device reaches the kMaxDeviceY ceiling.
+// start position; the vertical move keeps the rig's shape while maintaining the
+// HMD floor.
 //   Ctrl        -> yaw (dx) and pitch (dy) the rig
 //   Ctrl|Shift  -> roll the rig (dx)
 //   Shift       -> move the rig vertically (dy)

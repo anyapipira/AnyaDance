@@ -39,11 +39,11 @@ void TestNya() {
     EXPECT_NEAR(got.controllers[1].finger_bends.thumb, 0.5f, 0.0001f);
 
     // A multi-frame animation round-trips its times and frame count, and Y is
-    // clamped to the 2 m ceiling on load even if the source exceeds it.
+    // clamped to the supported Y range on load even if the source exceeds it.
     DanceMotion motion;
     for (int i = 0; i < 3; ++i) {
         FrameState f = BuildResetTPose(MakeNeutralFrame());
-        f.devices[DeviceSlot(DeviceIndex::Hmd)].position.y = 5.0f;  // over the ceiling
+        f.devices[DeviceSlot(DeviceIndex::Hmd)].position.y = 26.0f;
         motion.frames.push_back(f);
         motion.times.push_back(static_cast<float>(i) * 0.5f);
     }

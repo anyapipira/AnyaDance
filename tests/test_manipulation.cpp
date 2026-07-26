@@ -61,14 +61,13 @@ void TestManipulation() {
     EXPECT_TRUE(frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y > hmdYStart.y);
     EXPECT_SAME_ROTATION(frame.devices[DeviceSlot(DeviceIndex::Hmd)].rotation, hmdRotStart);
 
-    // Head Y is clamped to the shared 2 m ceiling, like every other device.
+    // Head Y is capped at the shared maximum.
     hmdDrag = BeginDrag(frame, DeviceIndex::Hmd);
     ApplyDragDelta(hmdDrag, frame, 0.0f, -100000.0f, ManipulationModifier_Shift);
     EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y, kMaxDeviceY, 0.0001f);
     EXPECT_TRUE(frame.devices[DeviceSlot(DeviceIndex::Hmd)].y_clamped);
 
-    // Re-anchor at the ceiling: after overshooting far past 2 m, a small reverse
-    // drag must descend immediately from the cap, not unwind the phantom overshoot.
+    // Reversing at the cap descends immediately.
     ApplyDragDelta(hmdDrag, frame, 0.0f, 20.0f, ManipulationModifier_Shift);
     EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y,
                 kMaxDeviceY - 20.0f * kTranslationMetersPerCount, 0.0001f);
@@ -268,9 +267,7 @@ void TestManipulation() {
         EXPECT_SAME_ROTATION(frame.devices[slot].rotation, rigStart.devices[slot].rotation);
     }
 
-    // The 2 m ceiling clamps the rig as a whole: the highest device stops at the
-    // cap with the rig's shape intact, and a reversed drag descends immediately
-    // (the accumulator re-anchors at the cap).
+    // The rig stops at the shared maximum while retaining its shape.
     const auto highestY = [](const FrameState& f) {
         float highest = f.devices[0].position.y;
         for (const DeviceState& device : f.devices) {

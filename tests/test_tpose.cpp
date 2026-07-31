@@ -41,18 +41,22 @@ void TestTPose() {
     const DeviceState& rightFoot = reset.devices[DeviceSlot(DeviceIndex::RightFoot)];
     // With the heading zeroed and the rig anchored at origin, offsets land in body
     // space directly (HMD at x=0, z=0).
-    EXPECT_VEC3_NEAR(left.position, (Vec3{-0.62f, 1.33f, -0.10f}));
-    EXPECT_VEC3_NEAR(right.position, (Vec3{0.62f, 1.33f, -0.10f}));
+    EXPECT_VEC3_NEAR(left.position, (Vec3{-0.68f, 1.33f, -0.10f}));
+    EXPECT_VEC3_NEAR(right.position, (Vec3{0.68f, 1.33f, -0.10f}));
     EXPECT_VEC3_NEAR(hip.position, (Vec3{0.0f, 1.07f, -0.05f}));
     EXPECT_VEC3_NEAR(leftFoot.position, (Vec3{-0.09f, 0.26f, 0.10f}));
     EXPECT_VEC3_NEAR(rightFoot.position, (Vec3{0.09f, 0.26f, 0.10f}));
     EXPECT_NEAR(LengthSquared(left.rotation), 1.0f, 0.0001f);
     EXPECT_NEAR(LengthSquared(right.rotation), 1.0f, 0.0001f);
     EXPECT_SAME_ROTATION(left.rotation, kLeftControllerCanonicalRotation);
+    EXPECT_SAME_ROTATION(right.rotation, kRightControllerCanonicalRotation);
+    EXPECT_SAME_ROTATION(hip.rotation, (Quat{}));
+    EXPECT_SAME_ROTATION(leftFoot.rotation, (Quat{}));
+    EXPECT_SAME_ROTATION(rightFoot.rotation, (Quat{}));
 
     FrameState neutralReset = BuildResetTPose(MakeNeutralFrame());
-    EXPECT_VEC3_NEAR(neutralReset.devices[DeviceSlot(DeviceIndex::LeftController)].position, (Vec3{-0.62f, 1.33f, -0.10f}));
-    EXPECT_VEC3_NEAR(neutralReset.devices[DeviceSlot(DeviceIndex::RightController)].position, (Vec3{0.62f, 1.33f, -0.10f}));
+    EXPECT_VEC3_NEAR(neutralReset.devices[DeviceSlot(DeviceIndex::LeftController)].position, (Vec3{-0.68f, 1.33f, -0.10f}));
+    EXPECT_VEC3_NEAR(neutralReset.devices[DeviceSlot(DeviceIndex::RightController)].position, (Vec3{0.68f, 1.33f, -0.10f}));
     EXPECT_VEC3_NEAR(neutralReset.devices[DeviceSlot(DeviceIndex::Hip)].position, (Vec3{0.0f, 1.07f, -0.05f}));
     EXPECT_VEC3_NEAR(neutralReset.devices[DeviceSlot(DeviceIndex::LeftFoot)].position, (Vec3{-0.09f, 0.26f, 0.10f}));
     EXPECT_VEC3_NEAR(neutralReset.devices[DeviceSlot(DeviceIndex::RightFoot)].position, (Vec3{0.09f, 0.26f, 0.10f}));

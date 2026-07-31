@@ -38,23 +38,25 @@ The companion UI starts and resets to a canonical test T-pose. These HMD-local p
 
 ```text
 HMD Y:            1.50 m
-Left controller:  (-0.62, -0.17, -0.20) m
-Right controller: ( 0.62, -0.17,  0.20) m
+Left controller:  (-0.68, -0.17, -0.10) m
+Right controller: ( 0.68, -0.17, -0.10) m
 Hip:              ( 0.00, -0.43, -0.05) m
 Left foot:        (-0.09, -1.24,  0.10) m
 Right foot:       ( 0.09, -1.24,  0.10) m
 ```
 
-With a neutral HMD at `(0.00, 1.50, 0.00)`, this puts the feet at `(-0.09, 0.26, 0.10)` and `(0.09, 0.26, 0.10)`.
+With a neutral HMD at `(0.00, 1.50, 0.00)`, this puts the controllers at
+`(-0.68, 1.33, -0.10)` and `(0.68, 1.33, -0.10)`, and the feet at
+`(-0.09, 0.26, 0.10)` and `(0.09, 0.26, 0.10)`.
 
-Reset preserves HMD X/Z and the HMD yaw only — it uprights the head, dropping pitch and roll, so the whole body faces one consistent direction. Other device positions are built from these HMD-yaw-relative offsets. Other device rotations use HMD yaw only, plus canonical local controller rotations:
+Reset anchors the HMD at `(0.00, 1.50, 0.00)` with identity rotation, producing a centered, forward-facing rig. Other device positions use the offsets above, and controller rotations use these canonical values:
 
 ```text
 Left controller:  (0.0, 0.0, -0.7071067811865475, 0.7071067811865475)
 Right controller: (0.0, 0.0,  0.7071067811865475, 0.7071067811865475)
 ```
 
-Hip and feet use identity local rotations composed with HMD yaw.
+Hip and feet use identity rotations.
 
 ## Virtual HMD Display
 
@@ -75,7 +77,7 @@ stretched.
 
 The companion UI has one mirror checkbox between the controller boxes and one between the foot boxes. When enabled, dragging either side makes the opposite side the absolute reflected pose. In HMD frame mode, the reflection uses the local YZ plane defined by the current HMD yaw and HMD position. In Global frame mode, it uses world axes with the HMD position as the center. This keeps the pair symmetric rather than copying or negating only the drag delta.
 
-The capture panel reserves a fixed-height mouse-help area, keeping the device rows stable while switching languages. The boxes resize to fit the panel height. Left mouse drag moves non-HMD devices in local X/Y, middle mouse drag rotates, and right mouse drag moves depth. The HMD allows rotation, plus vertical (Y) movement with a left+right mouse drag, clamped to `kMaxDeviceY`.
+The capture panel reserves a fixed-height mouse-help area, keeping the device rows stable while switching languages. The boxes resize to fit the panel height. Left mouse drag moves non-HMD devices in local X/Y, middle mouse drag rotates, and right mouse drag moves depth. The HMD allows rotation, plus vertical (Y) movement with a right mouse drag (a left+right chord also works). All device Y positions are clamped to `0–25 m`. Over the empty panel area, a middle mouse drag rotates the whole rig (yaw/pitch) about the HMD position, middle+right rolls it, and right alone moves the whole rig vertically, stopping as a unit at either Y boundary.
 
 Dragging the empty area of the panel drives the right controller thumbstick: the press point is the neutral center and the drag offset maps to the stick axes, clamped to ±1, recentering on release. It is intended for aiming the right-hand quick menu (held `M`).
 

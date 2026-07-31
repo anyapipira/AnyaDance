@@ -15,7 +15,7 @@ The core library owns data structures and testable behavior:
 - device constants and public identifiers
 - vector/quaternion helpers using XYZW quaternions for wire poses
 - UDP protocol parsing and serialization
-- `Y <= 2.0 m` safety clamp
+- `0 <= Y <= 25.0 m` safety clamp
 - canonical T-pose reset
 - keyboard input mapping (every key maps directly to a held button or axis)
 - mouse manipulation math
@@ -29,7 +29,7 @@ The SteamVR driver registers up to six devices:
 - left and right `knuckles` controllers
 - hip, left foot, and right foot generic trackers
 
-The driver starts a loopback UDP receiver on `127.0.0.1:39570`. Valid samples update per-device pose state. Invalid packets are ignored. The driver clamps device Y again after packet validation as a defense in depth.
+The driver starts a loopback UDP receiver on `127.0.0.1:39570`. Valid samples update per-device pose state. Invalid packets are ignored. The driver clamps device Y to the supported `0–25 m` range after validation as a defense in depth.
 
 All devices start valid at neutral poses and remain valid if packets stop. The driver reports the latest accepted pose as connected, valid, and `TrackingResult_Running_OK`.
 

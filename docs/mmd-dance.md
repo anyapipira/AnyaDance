@@ -14,7 +14,8 @@ then **Play**.
 ## What you need
 
 - **Blender** (auto-detected from `C:\Program Files\Blender Foundation\Blender *`,
-  the `ANYADANCE_BLENDER` environment variable, or `PATH`).
+  Microsoft Store's `blender-launcher.exe` app execution alias, the
+  `ANYADANCE_BLENDER` environment variable, or `PATH`).
 - **MMD Tools** ([MMD-Blender/blender_mmd_tools](https://github.com/MMD-Blender/blender_mmd_tools))
   installed as a Blender add-on / extension (auto-detected from the Blender
   extension tree under `%APPDATA%`).
@@ -38,8 +39,10 @@ model and motion, lets MMD Tools evaluate the pose, and
 writes **one** JSON file (reused/overwritten each export, under
 `%TEMP%\AnyaDance\mmd_solved.json`) holding, per frame, the world-space
 pose of head, shoulders, elbows, wrists, pelvis, ankles and toes, plus per-hand
-finger curls. Output is in the same convention the driver uses: right-handed,
-`+Y` up, `-Z` forward, metres, quaternions `xyzw`, the avatar's left on `-X`.
+finger curls. When the model has the required finger bones, it also records each
+rest hand's finger direction and palm normal for controller-frame calibration.
+Output is in the same convention the driver uses: right-handed, `+Y` up, `-Z`
+forward, metres, quaternions `xyzw`, the avatar's left on `-X`.
 
 ## The simplified remap
 
@@ -52,16 +55,18 @@ correspondingly small (`src/core/mmd_retarget.cpp`):
 - **Scale to height.** The body is scaled so its standing height matches the
   target height (`1.5 m`, the rig's HMD height `kResetHmdY`).
 - **Direct device placement.** Each device follows its driving joint: HMD ← head
-  (nudged up to the crown), hip ← pelvis, feet ← ankles, hands ← wrists. Hands
-  target the palm (wrist extended along the forearm) and are stretched a little
-  about the shoulder (**Hand reach**) so VRChat IK gets an extended-arm target.
+  (nudged up to the crown), hip ← pelvis, feet ← ankles, hands ← wrists. The palm
+  offset is calibrated in wrist-local rest space, so it follows live wrist
+  flexion, and is stretched a little about the shoulder (**Hand reach**) so
+  VRChat IK gets an extended-arm target.
 - **HMD/hip/feet rotation as deltas.** Orientation is the joint's rotation
   *relative to the model's rest pose* applied to the clean upright/forward device
   rest, keeping those devices in a stable rest frame.
-- **Controller orientation from the forearm**. A solved wrist quaternion is the
-  model bone's frame. The controller's neutral index-finger axis is aligned to the
-  elbow→wrist forearm, and the roll about it comes from the wrist rotation via a
-  wrist-local twist axis calibrated at the rest pose.
+- **Controller orientation from the solved wrist.** The model-specific wrist bone
+  frame is calibrated to the OpenVR controller frame at rest, then follows the
+  solved wrist rigidly so flexion, deviation, and roll all survive. Exported rest
+  finger/palm axes set the absolute palm roll, while shoulder/elbow/wrist anatomy
+  provides the joint-based rest alignment.
 - **Fingers.** When the model has finger bones, per-hand curls drive the
   controllers' skeletal hand pose.
 
@@ -94,19 +99,18 @@ stops playback.
 Once a dance is analyzed, **Save .nya** writes the retargeted result to a `.nya`
 clip file. **Load .nya** reads one back and enables Play immediately — loading a
 clip skips both the Blender solve and the remap, so a saved dance plays instantly
-on later runs (and on machines without Blender installed).
+on later runs.
 
 A `.nya` file stores device-level frames (the six device poses plus per-hand
 finger bends), so it is the same format the main window uses for **Save Pose** /
-**Load Pose**: a pose is just a one-frame clip. Device Y is clamped to the 2 m
+**Load Pose**: a pose is just a one-frame clip. Device Y is clamped to the 0–25 m
 limit and finger bends to `[0, 1]` on load. See `src/core/nya_format.*`.
 
-## Notes and limits
+## Runtime behavior
 
 - The first solve of a long dance can take Blender several seconds to a minute;
   the UI keeps rendering and streaming a T-pose while it runs.
-- Quality depends on matching the motion to its intended model. A wildly
-  different model (very different proportions) will still play but may look off.
+- Motion/model proportion matching determines retarget quality.
 - This is offline-solve + live-play: the solved motion is used by the UI for
   playback. Standard VRChat anti-cheat caveats in the project
   [disclaimer](../DISCLAIMER.md) apply.

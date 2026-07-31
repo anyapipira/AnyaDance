@@ -55,6 +55,10 @@ void DeviceBox(HWND hwnd, DeviceIndex deviceIndex, ImVec2 size, bool miniMode = 
     const bool hovered = ImGui::IsItemHovered();
     const bool leftClicked = hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
     const bool middleClicked = hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Middle);
+    // RMB alone drags the HMD vertically, matching the rig's RMB gesture. Other
+    // devices keep RMB as a chord modifier only (Z move / roll).
+    const bool rightClicked = hovered && deviceIndex == DeviceIndex::Hmd &&
+                              ImGui::IsMouseClicked(ImGuiMouseButton_Right);
     const ImVec2 min = ImGui::GetItemRectMin();
     const ImVec2 max = ImGui::GetItemRectMax();
     ImDrawList* draw = ImGui::GetWindowDrawList();
@@ -83,11 +87,11 @@ void DeviceBox(HWND hwnd, DeviceIndex deviceIndex, ImVec2 size, bool miniMode = 
         draw->AddText(textPos, IM_COL32(198, 205, 214, 255), rot.c_str());
         textPos.y += 18.0f;
     }
-    if (g_app.captureActive && g_app.dragDevice == deviceIndex) {
+    if (g_app.captureActive && !g_app.dragRig && g_app.dragDevice == deviceIndex) {
         draw->AddText(textPos, IM_COL32(107, 203, 119, 255), Tr(Text::Capture));
         textPos.y += 18.0f;
     }
-    if (device.position.y >= kMaxDeviceY || device.y_clamped) {
+    if (device.position.y <= kMinDeviceY || device.position.y >= kMaxDeviceY || device.y_clamped) {
         draw->AddText(ImVec2(max.x - 56.0f, min.y + 8.0f), IM_COL32(255, 196, 87, 255), Tr(Text::YMax));
     }
     if (!miniMode && deviceIndex == DeviceIndex::Hmd) {
@@ -97,6 +101,8 @@ void DeviceBox(HWND hwnd, DeviceIndex deviceIndex, ImVec2 size, bool miniMode = 
         BeginMouseCapture(hwnd, deviceIndex, VK_LBUTTON);
     } else if (middleClicked) {
         BeginMouseCapture(hwnd, deviceIndex, VK_MBUTTON);
+    } else if (rightClicked) {
+        BeginMouseCapture(hwnd, deviceIndex, VK_RBUTTON);
     }
 }
 
@@ -210,6 +216,16 @@ void RenderBodyPanel(HWND hwnd, bool miniMode) {
     // items. The ImGui Win32 backend captures the mouse while a button is held,
     // so the drag keeps tracking even when the cursor leaves the panel.
     const bool overEmptyBody = ImGui::IsWindowHovered() && !ImGui::IsAnyItemHovered();
+    // Empty area also drives the whole rig: MMB drag rotates it (yaw/pitch),
+    // MMB+RMB rolls it, and RMB alone moves it vertically. The chord works in
+    // either press order via ModifiersForCaptureButton.
+    if (!g_app.captureActive && !g_app.joystickActive && overEmptyBody) {
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) {
+            BeginRigMouseCapture(hwnd, VK_MBUTTON);
+        } else if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+            BeginRigMouseCapture(hwnd, VK_RBUTTON);
+        }
+    }
     if (!g_app.captureActive && !g_app.joystickActive && overEmptyBody &&
         ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         g_app.joystickActive = true;

@@ -7,6 +7,7 @@
 #include "core/math3d.h"
 #include "core/tpose.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace anyadance::tests {
@@ -60,14 +61,13 @@ void TestManipulation() {
     EXPECT_TRUE(frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y > hmdYStart.y);
     EXPECT_SAME_ROTATION(frame.devices[DeviceSlot(DeviceIndex::Hmd)].rotation, hmdRotStart);
 
-    // Head Y is clamped to the shared 2 m ceiling, like every other device.
+    // Head Y is capped at the shared maximum.
     hmdDrag = BeginDrag(frame, DeviceIndex::Hmd);
     ApplyDragDelta(hmdDrag, frame, 0.0f, -100000.0f, ManipulationModifier_Shift);
     EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y, kMaxDeviceY, 0.0001f);
     EXPECT_TRUE(frame.devices[DeviceSlot(DeviceIndex::Hmd)].y_clamped);
 
-    // Re-anchor at the ceiling: after overshooting far past 2 m, a small reverse
-    // drag must descend immediately from the cap, not unwind the phantom overshoot.
+    // Reversing at the cap descends immediately.
     ApplyDragDelta(hmdDrag, frame, 0.0f, 20.0f, ManipulationModifier_Shift);
     EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y,
                 kMaxDeviceY - 20.0f * kTranslationMetersPerCount, 0.0001f);
@@ -142,8 +142,8 @@ void TestManipulation() {
 
     frame.devices[DeviceSlot(DeviceIndex::LeftController)].position.y = 1.99f;
     leftDrag = BeginDrag(frame, DeviceIndex::LeftController);
-    ApplyDragDelta(leftDrag, frame, 50.0f, -1000.0f, ManipulationModifier_None);
-    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::LeftController)].position.y, 2.0f, 0.0001f);
+    ApplyDragDelta(leftDrag, frame, 50.0f, -100000.0f, ManipulationModifier_None);
+    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::LeftController)].position.y, kMaxDeviceY, 0.0001f);
 
     frame = BuildResetTPose(MakeNeutralFrame());
     leftDrag = BeginDrag(frame, DeviceIndex::LeftController);
@@ -223,6 +223,109 @@ void TestManipulation() {
     ApplyDragDelta(leftDrag, frame, 30.0f, 0.0f, ManipulationModifier_Ctrl | ManipulationModifier_Shift);
     ApplySymmetricMirror(leftDrag, frame, DeviceIndex::RightController);
     EXPECT_MIRRORED_IN_YAW_BASIS(frame, leftDrag, DeviceIndex::LeftController, DeviceIndex::RightController);
+
+    // Whole-rig manipulation (empty-area drags). Ctrl (MMB) yaws every device
+    // about the HMD's start position: offsets keep their length and height, the
+    // rig actually turns, and orientations follow.
+    frame = BuildResetTPose(MakeNeutralFrame());
+    const FrameState rigStart = frame;
+    const Vec3 rigPivot = rigStart.devices[DeviceSlot(DeviceIndex::Hmd)].position;
+    DragSnapshot rigDrag = BeginDrag(frame, DeviceIndex::Hmd);
+    ApplyRigDragDelta(rigDrag, frame, 300.0f, 0.0f, ManipulationModifier_Ctrl);
+    const auto offsetFrom = [](const Vec3& p, const Vec3& o) { return Vec3{p.x - o.x, p.y - o.y, p.z - o.z}; };
+    const auto lengthOf = [](const Vec3& v) { return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z); };
+    for (std::size_t slot = 0; slot < frame.devices.size(); ++slot) {
+        const Vec3 before = offsetFrom(rigStart.devices[slot].position, rigPivot);
+        const Vec3 after = offsetFrom(frame.devices[slot].position, rigPivot);
+        EXPECT_NEAR(lengthOf(after), lengthOf(before), 0.0001f);
+        EXPECT_NEAR(after.y, before.y, 0.0001f);
+    }
+    EXPECT_TRUE(std::fabs(frame.devices[DeviceSlot(DeviceIndex::LeftController)].position.z -
+                          rigStart.devices[DeviceSlot(DeviceIndex::LeftController)].position.z) > 0.001f);
+    EXPECT_TRUE(std::fabs(frame.devices[DeviceSlot(DeviceIndex::Hmd)].rotation.y -
+                          rigStart.devices[DeviceSlot(DeviceIndex::Hmd)].rotation.y) > 0.0f);
+
+    // Ctrl+Shift (MMB+RMB) rolls the rig: the HMD rolls in place and a laterally
+    // offset device (the left controller in T-pose) swings vertically.
+    frame = BuildResetTPose(MakeNeutralFrame());
+    rigDrag = BeginDrag(frame, DeviceIndex::Hmd);
+    ApplyRigDragDelta(rigDrag, frame, 300.0f, 0.0f, ManipulationModifier_Ctrl | ManipulationModifier_Shift);
+    EXPECT_TRUE(std::fabs(frame.devices[DeviceSlot(DeviceIndex::Hmd)].rotation.z -
+                          rigStart.devices[DeviceSlot(DeviceIndex::Hmd)].rotation.z) > 0.0f);
+    EXPECT_TRUE(std::fabs(frame.devices[DeviceSlot(DeviceIndex::LeftController)].position.y -
+                          rigStart.devices[DeviceSlot(DeviceIndex::LeftController)].position.y) > 0.001f);
+
+    // Shift (RMB) moves the whole rig vertically, preserving shape and rotations.
+    frame = BuildResetTPose(MakeNeutralFrame());
+    rigDrag = BeginDrag(frame, DeviceIndex::Hmd);
+    ApplyRigDragDelta(rigDrag, frame, 0.0f, -100.0f, ManipulationModifier_Shift);
+    const float rigRise = 100.0f * kTranslationMetersPerCount;
+    for (std::size_t slot = 0; slot < frame.devices.size(); ++slot) {
+        EXPECT_NEAR(frame.devices[slot].position.x, rigStart.devices[slot].position.x, 0.0001f);
+        EXPECT_NEAR(frame.devices[slot].position.y, rigStart.devices[slot].position.y + rigRise, 0.0001f);
+        EXPECT_NEAR(frame.devices[slot].position.z, rigStart.devices[slot].position.z, 0.0001f);
+        EXPECT_SAME_ROTATION(frame.devices[slot].rotation, rigStart.devices[slot].rotation);
+    }
+
+    // The rig stops at the shared maximum while retaining its shape.
+    const auto highestY = [](const FrameState& f) {
+        float highest = f.devices[0].position.y;
+        for (const DeviceState& device : f.devices) {
+            highest = std::max(highest, device.position.y);
+        }
+        return highest;
+    };
+    const auto lowestY = [](const FrameState& f) {
+        float lowest = f.devices[0].position.y;
+        for (const DeviceState& device : f.devices) {
+            lowest = std::min(lowest, device.position.y);
+        }
+        return lowest;
+    };
+    const float hmdToHipStart = frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y -
+                                frame.devices[DeviceSlot(DeviceIndex::Hip)].position.y;
+    rigDrag = BeginDrag(frame, DeviceIndex::Hmd);
+    ApplyRigDragDelta(rigDrag, frame, 0.0f, -100000.0f, ManipulationModifier_Shift);
+    EXPECT_NEAR(highestY(frame), kMaxDeviceY, 0.0001f);
+    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y -
+                    frame.devices[DeviceSlot(DeviceIndex::Hip)].position.y,
+                hmdToHipStart, 0.0001f);
+    ApplyRigDragDelta(rigDrag, frame, 0.0f, 20.0f, ManipulationModifier_Shift);
+    EXPECT_NEAR(highestY(frame), kMaxDeviceY - 20.0f * kTranslationMetersPerCount, 0.0001f);
+
+    // Direct HMD manipulation uses the shared floor and re-anchors at the bound,
+    // so a reversed drag ascends immediately.
+    frame = BuildResetTPose(MakeNeutralFrame());
+    hmdDrag = BeginDrag(frame, DeviceIndex::Hmd);
+    ApplyDragDelta(hmdDrag, frame, 0.0f, 100000.0f, ManipulationModifier_Shift);
+    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y, kMinHmdY, 0.0001f);
+    ApplyDragDelta(hmdDrag, frame, 0.0f, -20.0f, ManipulationModifier_Shift);
+    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y,
+                kMinHmdY + 20.0f * kTranslationMetersPerCount, 0.0001f);
+
+    // Direct foot manipulation uses the same shared floor.
+    frame = BuildResetTPose(MakeNeutralFrame());
+    leftDrag = BeginDrag(frame, DeviceIndex::LeftFoot);
+    ApplyDragDelta(leftDrag, frame, 0.0f, 1000.0f, ManipulationModifier_None);
+    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::LeftFoot)].position.y, kMinDeviceY, 0.0001f);
+    ApplyDragDelta(leftDrag, frame, 0.0f, -20.0f, ManipulationModifier_None);
+    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::LeftFoot)].position.y,
+                kMinDeviceY + 20.0f * kTranslationMetersPerCount, 0.0001f);
+
+    // The rig's vertical move preserves its shape inside the shared range and
+    // re-anchors at the floor so a reversed drag rises immediately.
+    frame = BuildResetTPose(MakeNeutralFrame());
+    const float rigHipOffset = frame.devices[DeviceSlot(DeviceIndex::Hip)].position.y -
+                               frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y;
+    rigDrag = BeginDrag(frame, DeviceIndex::Hmd);
+    ApplyRigDragDelta(rigDrag, frame, 0.0f, 100000.0f, ManipulationModifier_Shift);
+    EXPECT_NEAR(lowestY(frame), kMinDeviceY, 0.0001f);
+    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::Hip)].position.y -
+                    frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y,
+                rigHipOffset, 0.0001f);
+    ApplyRigDragDelta(rigDrag, frame, 0.0f, -20.0f, ManipulationModifier_Shift);
+    EXPECT_NEAR(lowestY(frame),
+                kMinDeviceY + 20.0f * kTranslationMetersPerCount, 0.0001f);
 
     DeviceIndex mirroredDevice = DeviceIndex::Hmd;
     EXPECT_TRUE(MirroredDeviceFor(DeviceIndex::LeftController, mirroredDevice));

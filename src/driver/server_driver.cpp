@@ -14,8 +14,8 @@ const VirtualDeviceDefinition kDeviceDefinitions[] = {
     {"left_controller", "anyadance_left_controller_001", VirtualDeviceKind::Controller, {-0.45f, 1.15f, 0.0f}, TrackedControllerRole_LeftHand},
     {"right_controller", "anyadance_right_controller_001", VirtualDeviceKind::Controller, {0.45f, 1.15f, 0.0f}, TrackedControllerRole_RightHand},
     {"hip", "anyadance_hip_001", VirtualDeviceKind::Tracker, {0.0f, 0.85f, 0.0f}, TrackedControllerRole_Invalid},
-    {"left_foot", "anyadance_left_foot_001", VirtualDeviceKind::Tracker, {-0.12f, -0.01f, 0.0f}, TrackedControllerRole_Invalid},
-    {"right_foot", "anyadance_right_foot_001", VirtualDeviceKind::Tracker, {0.12f, -0.01f, 0.0f}, TrackedControllerRole_Invalid},
+    {"left_foot", "anyadance_left_foot_001", VirtualDeviceKind::Tracker, {-0.12f, 0.0f, 0.0f}, TrackedControllerRole_Invalid},
+    {"right_foot", "anyadance_right_foot_001", VirtualDeviceKind::Tracker, {0.12f, 0.0f, 0.0f}, TrackedControllerRole_Invalid},
 };
 
 ETrackedDeviceClass DeviceClassFor(VirtualDeviceKind kind) {

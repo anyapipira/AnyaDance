@@ -20,8 +20,11 @@ inline constexpr const char* kUdpHost = "127.0.0.1";
 inline constexpr unsigned short kUdpPort = 39570;
 inline constexpr int kProtocolVersion = 1;
 inline constexpr int kMaxPacketBytes = 8192;
-inline constexpr float kMaxAbsPositionMeters = 10.0f;
-inline constexpr float kMaxDeviceY = 2.0f;
+inline constexpr float kMaxAbsPositionMeters = 30.0f;
+inline constexpr float kMinDeviceY = 0.0f;
+inline constexpr float kMaxDeviceY = 25.0f;
+// The HMD uses the shared floor while dragging.
+inline constexpr float kMinHmdY = 0.0f;
 inline constexpr int kStreamRateHz = 60;
 
 inline constexpr float kResetHmdY = 1.50f;

@@ -47,7 +47,46 @@ void TestUiLayout() {
         EXPECT_TRUE(GetClientRect(window, &client) != FALSE);
         EXPECT_TRUE(client.right - client.left >= testClientWidth);
         EXPECT_TRUE(client.bottom - client.top >= testClientHeight);
+
+        // While minimized, the iconic rects (for example 237x39 with an empty
+        // client area) must not be used to estimate the frame. The conversion
+        // has to match the style-based value, or the WM_GETMINMAXINFO sent
+        // during a restore would clamp the window to an inflated minimum width.
+        ShowWindow(window, SW_SHOWMINNOACTIVE);
+        EXPECT_TRUE(IsIconic(window) != FALSE);
+        const SIZE minimizedOuter = OuterWindowSizeForClient(window, testClientWidth, testClientHeight);
+        EXPECT_TRUE(minimizedOuter.cx == testOuter.cx);
+        EXPECT_TRUE(minimizedOuter.cy == testOuter.cy);
+
         DestroyWindow(window);
+    }
+
+    // Mid-restore, Windows has already cleared the minimized bit while the
+    // rects still describe the icon, so IsIconic alone cannot gate the live
+    // measurement. A window whose client area is not realized (empty) must also
+    // fall back to the style-based conversion.
+    HWND emptyClient = CreateWindowExW(
+        kMainWindowExStyle,
+        L"STATIC",
+        L"AnyaDance empty client test",
+        kMainWindowStyle,
+        0,
+        0,
+        0,
+        0,
+        nullptr,
+        nullptr,
+        GetModuleHandleW(nullptr),
+        nullptr);
+    EXPECT_TRUE(emptyClient != nullptr);
+    if (emptyClient) {
+        RECT client{};
+        EXPECT_TRUE(GetClientRect(emptyClient, &client) != FALSE);
+        EXPECT_TRUE(client.right - client.left == 0 || client.bottom - client.top == 0);
+        const SIZE emptyOuter = OuterWindowSizeForClient(emptyClient, testClientWidth, testClientHeight);
+        EXPECT_TRUE(emptyOuter.cx == testOuter.cx);
+        EXPECT_TRUE(emptyOuter.cy == testOuter.cy);
+        DestroyWindow(emptyClient);
     }
 
     constexpr float baseFooter = MainFooterHeightForMetrics(16.0f, 3.0f, 4.0f, 8.0f);

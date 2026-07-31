@@ -31,10 +31,10 @@ const char* const kStrings[kTextCount][kLanguageCount] = {
     /* LanguageLabel         */ {"Language", u8"语言"},
     /* YMax                  */ {"Y MAX", "Y MAX"},
     /* Capture               */ {"Captured", u8"捕获中"},
-    /* HmdHelp               */ {"HMD: rotate; LMB+RMB to move up/down", u8"头显：旋转；左键+右键上下移动"},
+    /* HmdHelp               */ {"HMD: rotate; RMB to move up/down", u8"头显：旋转；右键上下移动"},
     /* KeyLine1              */ {"WASD Move | Q/E Turn | Space Jump | M Menu | V Voice", u8"WASD 移动 | Q/E 转向 | Space 跳跃 | M 菜单 | V 语音"},
     /* KeyLine2              */ {"Z Left Trigger | X Right Trigger | Wheel Fingers (hold 1-0 for one) | Full fist = grip", u8"Z 左扳机 | X 右扳机 | 滚轮开合手指（按住 1-0 控制单指）| 握拳=抓取"},
-    /* MouseHelp             */ {"On a box: LMB XY move | MMB pitch/yaw rotate | hold RMB with LMB/MMB for Z move/roll. Drag empty space = right stick (for radial menus)", u8"在方框上：左键XY移动 | 中键俯仰偏航旋转 | 同时按住右键Z移动/横滚旋转。在空白处拖拽=右摇杆（便于操作圆盘菜单）"},
+    /* MouseHelp             */ {"Box: LMB move XY | MMB rotate | +RMB move Z/roll. Empty: LMB right stick | MMB rotate rig | MMB+RMB roll rig | RMB rig up/down", u8"方框上：左键XY移动 | 中键旋转 | 加右键Z移动/横滚。空白处：左键=右摇杆 | 中键旋转全身 | 中键+右键横滚全身 | 右键升降全身"},
     /* Mirror                */ {"Mirror", u8"对称"},
     /* FrameLabel            */ {"Move/rotate", u8"移动/旋转参考系"},
     /* FrameHmd              */ {"HMD", u8"头显"},
@@ -76,9 +76,9 @@ const char* const kStrings[kTextCount][kLanguageCount] = {
      "Feeding virtual devices or spoofed tracking into a live online game may violate that game's "
      "Terms of Service and can be detected by its anti-cheat system, which may result in the "
      "suspension or permanent ban of your account.\n\n"
-     "Registering the driver changes your SteamVR configuration: it puts SteamVR into a fully virtual "
-     "mode and writes to steamvr.vrsettings, so while the driver is registered your real headset, "
-     "controllers, and trackers will not be tracked (a backup is made, and unregistering restores it). "
+     "Registering the driver changes your SteamVR configuration: it activates AnyaDance's fully virtual "
+     "HMD, controllers, and trackers and writes to steamvr.vrsettings. Registration creates a backup, "
+     "and unregistering restores the original configuration. "
      "The virtual HMD also continuously renders both eyes through the SteamVR compositor, which consumes "
      "additional GPU and CPU; raising the render resolution increases that load further.\n\n"
      "You use this software entirely at your own risk. It is provided \"as is\" without warranty of "
@@ -91,8 +91,8 @@ const char* const kStrings[kTextCount][kLanguageCount] = {
      u8"AnyaDance 仅供合法、经授权的测试与开发使用。\n\n"
      u8"将虚拟设备或伪造的追踪数据输入正在运行的在线游戏，可能违反该游戏的服务条款，并可能被其反作弊系统检测到，"
      u8"从而导致你的账号被封禁或永久封停。\n\n"
-     u8"注册驱动会更改你的 SteamVR 配置：它会将 SteamVR 切换为全虚拟模式并写入 steamvr.vrsettings，因此在驱动处于"
-     u8"注册状态期间，你的真实头显、控制器与追踪器将无法被追踪（注册时会创建备份，取消注册会将其还原）。"
+     u8"注册驱动会更改你的 SteamVR 配置：它会启用 AnyaDance 的全虚拟头显、控制器与追踪器，并写入 steamvr.vrsettings。"
+     u8"注册时会创建备份，取消注册会还原原始配置。"
      u8"虚拟头显还会通过 SteamVR 合成器持续渲染左右两只眼睛，会占用额外的 GPU 与 CPU 资源；提高渲染分辨率会进一步加大该负载。\n\n"
      u8"你需自行承担使用本软件的全部风险。本软件按“原样”提供，不附带任何形式的担保；对于因使用或滥用造成的任何后果"
      u8"（包括账号封禁或失去访问权限），作者概不负责，亦不承担任何责任。\n\n"

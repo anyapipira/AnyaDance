@@ -57,7 +57,7 @@ Changing registration or startup settings requires restarting SteamVR.
 
 ## Unregister
 
-For a release installation, click **Unregister Driver**, then confirm the **Restart SteamVR** prompt. Do this before moving or deleting the extracted folder.
+For a release installation, click **Unregister Driver**, then click **Restart SteamVR** to apply the change. Do this before moving or deleting the extracted folder.
 
 For a source installation, the equivalent scripts are:
 
@@ -69,4 +69,4 @@ For a source installation, the equivalent scripts are:
 `%LOCALAPPDATA%\AnyaDance\uninstall-recovery`, unregisters the driver, restores
 the original settings backup when available, repairs known AnyaDance overrides
 when that backup is missing, verifies removal, and restarts SteamVR. Pass
-`-NoRestart` to leave SteamVR stopped. It does not delete the application files.
+`-NoRestart` to leave SteamVR stopped. The application files remain in place.

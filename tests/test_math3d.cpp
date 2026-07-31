@@ -70,9 +70,10 @@ void TestMath3d() {
     EXPECT_NEAR(ClampFloat(-5.0f, 0.0f, 1.0f), 0.0f, 0.0001f);
     EXPECT_NEAR(ClampFloat(0.3f, 0.0f, 1.0f), 0.3f, 0.0001f);
 
-    // ClampDeviceY caps at the shared 2 m ceiling but never raises a low value.
-    EXPECT_NEAR(ClampDeviceY(3.0f), kMaxDeviceY, 0.0001f);
+    EXPECT_NEAR(ClampDeviceY(30.0f), kMaxDeviceY, 0.0001f);
+    EXPECT_NEAR(ClampDeviceY(-1.0f), kMinDeviceY, 0.0001f);
     EXPECT_NEAR(ClampDeviceY(0.5f), 0.5f, 0.0001f);
+
 
     // DegToRad / RadToDeg are inverses.
     EXPECT_NEAR(RadToDeg(DegToRad(72.0f)), 72.0f, 0.0001f);

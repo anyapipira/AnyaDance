@@ -152,7 +152,7 @@ right_foot
 | --- | --- | --- |
 | `valid` | 布尔值 | 设备条目要被解析时必需。版本 1 在启动后始终保持所有虚拟设备有效，因此无论此值为何，驱动当前都会向 SteamVR 报告 `true`。 |
 | `connected` | 布尔值 | 设备条目要被解析时必需。版本 1 在启动后始终保持所有虚拟设备连接，因此无论此值为何，驱动当前都会向 SteamVR 报告 `true`。 |
-| `pose.position` | 三个数字的数组 | 必需。单位为米，处于驱动姿态空间；每个分量都必须是有限值且位于 `-10.0` 至 `10.0`，Y 还会被限制为最大 `2.0`。 |
+| `pose.position` | 三个数字的数组 | 必需。单位为米，处于驱动姿态空间；每个分量都必须是有限值且位于 `-30.0` 至 `30.0`，Y 会钳制到 `0.0`–`25.0`。 |
 | `pose.rotation_xyzw` | 四个数字的数组 | 必需。按 XYZW 排列的四元数；值必须有限，平方长度必须在 `0.5` 至 `1.5` 之间。接受后会被归一化。 |
 
 `inputs` 对象是可选的。只有 `left_controller` 和 `right_controller` 的输入条目会影响 OpenVR 控制器状态。控制器输入条目中的每个成员都是可选的；省略时使用下表中的默认值或回退值。只有当同一数据报的 `devices` 中也存在对应控制器的有效条目时，输入条目才会被应用。如果设备条目存在但输入条目缺失，普通按钮和轴会重置为默认值；如果设备条目本身缺失或格式错误，则保留该设备之前的姿态与输入。
@@ -162,7 +162,7 @@ right_foot
 | `trigger_click` | 布尔值 | 默认 `false` | 驱动 `/input/trigger/click`。 |
 | `trigger_value` | 数字 | 钳制到 `0.0`–`1.0`；省略时，若 `trigger_click` 为 true 则为 `1.0`，否则为 `0.0` | 驱动 `/input/trigger/value`。 |
 | `menu_click` | 布尔值 | 默认 `false` | 驱动 `/input/application_menu/click`。 |
-| `system_click` | 布尔值 | 默认 `false` | 为版本 1 兼容性而接受并发送，但当前驱动未暴露 `/input/system/click` 组件，因此不会产生 OpenVR 效果。 |
+| `system_click` | 布尔值 | 默认 `false` | 保留在版本 1 数据包中。 |
 | `a_click` | 布尔值 | 默认 `false` | 驱动 `/input/a/click`。 |
 | `b_click` | 布尔值 | 默认 `false` | 驱动 `/input/b/click`。 |
 | `grip_click` | 布尔值 | 默认 `false` | 驱动 `/input/grip/click` 和 `/input/grip/touch`。 |
@@ -185,24 +185,18 @@ right_foot
 
 - 缺少必需字段
 - 位置或四元数为非有限值
-- 位置分量绝对值超过 `10.0 m`
+- 位置分量绝对值超过 `30.0 m`
 - 四元数平方长度超出可接受的 `0.5` 到 `1.5` 范围
 
 被接受的四元数在使用前会被归一化。
 
-## Y 钳制
+## 位置限制
 
-所有设备都被钳制到最大 Y 值 `2.0 m`：
-
-```cpp
-position.y = std::min(position.y, 2.0f);
-```
-
-钳制作用于 Y。伴随 UI 在序列化前钳制。原生驱动在数据包校验后再次钳制，并对重复的钳制警告进行限频。
+所有位置分量都必须是有限值且位于 `±30 m` 范围内。伴随 UI 与驱动都会将设备 Y 进一步钳制到 `0–25 m`。
 
 ## 姿态存活
 
-驱动不会让设备姿态超时。在第一个数据包之前，所有六个虚拟设备都以中性姿态开始且保持连接、有效。当数据包到达时，每个设备最新的有效数据包会更新其姿态与控制器输入。如果数据包停止，SteamVR 仍会看到设备在其最后姿态保持连接且有效。
+在第一个数据包之前，所有六个虚拟设备都以中性姿态开始且保持连接、有效。当数据包到达时，每个设备最新的有效数据包会更新其姿态与控制器输入。数据包停止后，SteamVR 会继续看到设备在其最后姿态保持连接且有效。
 
 被接受的设备样本被报告为已连接、有效且 `TrackingResult_Running_OK`。
 
@@ -228,4 +222,4 @@ position.y = std::min(position.y, 2.0f);
 /input/skeleton/right
 ```
 
-`/input/grip/touch` 和 `/input/grip/force` 没有独立的线上字段；它们分别由 `grip_click` 和 `grip_value` 派生。骨骼组件的变换同样由 `finger_bends` 派生。
+`grip_click` 驱动 `/input/grip/touch`，`grip_value` 驱动 `/input/grip/force`。骨骼组件的变换由 `finger_bends` 派生。

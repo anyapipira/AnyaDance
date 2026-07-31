@@ -48,9 +48,17 @@ inline SIZE OuterWindowSizeForClient(int clientWidth, int clientHeight, DWORD st
 }
 
 inline SIZE OuterWindowSizeForClient(HWND hwnd, int clientWidth, int clientHeight) {
+    // While minimized, the window/client rects describe the taskbar icon (for
+    // example 237x39 with an empty client area), not the real frame. Measuring
+    // them then inflates the frame estimate, and the WM_GETMINMAXINFO Windows
+    // sends during a restore would clamp the window to that bogus minimum,
+    // resetting its width. IsIconic alone is not enough: during the restore the
+    // minimized bit is already cleared while the rects still describe the icon,
+    // so only trust the measurement when the client area is actually realized.
     RECT windowRect{};
     RECT clientRect{};
-    if (GetWindowRect(hwnd, &windowRect) && GetClientRect(hwnd, &clientRect)) {
+    if (!IsIconic(hwnd) && GetWindowRect(hwnd, &windowRect) && GetClientRect(hwnd, &clientRect) &&
+        clientRect.right > clientRect.left && clientRect.bottom > clientRect.top) {
         const int currentWindowWidth = windowRect.right - windowRect.left;
         const int currentWindowHeight = windowRect.bottom - windowRect.top;
         const int currentClientWidth = clientRect.right - clientRect.left;

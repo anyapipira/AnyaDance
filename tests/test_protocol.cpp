@@ -66,7 +66,7 @@ void TestProtocol() {
     EXPECT_NEAR(left.trackpad_y, left.joystick_y, 0.0001f);
 
     FrameState serialized = BuildResetTPose(MakeNeutralFrame());
-    serialized.devices[DeviceSlot(DeviceIndex::Hmd)].position.y = kMaxDeviceY + 1.0f;
+    serialized.devices[DeviceSlot(DeviceIndex::Hmd)].position.y = 26.0f;
     serialized.controllers[0].grip_click = true;
     serialized.controllers[0].grip_value = 2.0f;
     serialized.controllers[0].has_finger_bends = true;
@@ -82,13 +82,13 @@ void TestProtocol() {
     EXPECT_NEAR(serializedLeft.finger_bends.index, 0.25f, 0.0001f);
     EXPECT_NEAR(serializedLeft.finger_bends.pinky, 1.0f, 0.0001f);
 
-    const std::string overHeight = "{\"version\":1,\"devices\":{\"hmd\":{\"valid\":true,\"connected\":true,\"pose\":{\"position\":[0,3,0],\"rotation_xyzw\":[0,0,0,1]}}}}";
+    const std::string overHeight = "{\"version\":1,\"devices\":{\"hmd\":{\"valid\":true,\"connected\":true,\"pose\":{\"position\":[0,26,0],\"rotation_xyzw\":[0,0,0,1]}}}}";
     EXPECT_TRUE(ParsePoseFrame(overHeight, parsed));
     EXPECT_NEAR(parsed.samples[DeviceSlot(DeviceIndex::Hmd)].position[1], kMaxDeviceY, 0.0001f);
     EXPECT_TRUE(parsed.y_clamped[DeviceSlot(DeviceIndex::Hmd)]);
 
-    // A position component beyond the +/-10 m sanity bound rejects that device.
-    const std::string outOfRange = "{\"version\":1,\"devices\":{\"hmd\":{\"valid\":true,\"connected\":true,\"pose\":{\"position\":[11,1,0],\"rotation_xyzw\":[0,0,0,1]}}}}";
+    // Position components beyond the +/-30 m safety range are rejected.
+    const std::string outOfRange = "{\"version\":1,\"devices\":{\"hmd\":{\"valid\":true,\"connected\":true,\"pose\":{\"position\":[31,1,0],\"rotation_xyzw\":[0,0,0,1]}}}}";
     EXPECT_FALSE(ParsePoseFrame(outOfRange, parsed));
 
     // trackpad falls back to the joystick only when omitted; an explicit trackpad

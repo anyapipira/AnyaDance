@@ -1,5 +1,6 @@
 #include "virtual_device.h"
 #include "core/constants.h"
+#include "core/math3d.h"
 #include "log.h"
 
 #include <algorithm>
@@ -688,15 +689,16 @@ DriverPose_t VirtualDevice::GetPose() {
 
 void VirtualDevice::ApplyPoseSample(const PoseSample& sample) {
     PoseSample safeSample = sample;
-    if (safeSample.position[1] > kMaxDeviceY) {
-        safeSample.position[1] = kMaxDeviceY;
+    if (safeSample.position[1] < kMinDeviceY || safeSample.position[1] > kMaxDeviceY) {
+        safeSample.position[1] = ClampDeviceY(safeSample.position[1]);
         safeSample.y_clamped = true;
     }
     if (safeSample.y_clamped) {
         static auto lastClampWarning = std::chrono::steady_clock::time_point{};
         const auto now = std::chrono::steady_clock::now();
         if (now - lastClampWarning > std::chrono::seconds(1)) {
-            DriverLog("[anyadance] Clamped device Y to %.2f m; device=%s\n", kMaxDeviceY, m_definition.serial.c_str());
+            DriverLog("[anyadance] Clamped device Y to [%.2f, %.2f] m; device=%s\n",
+                      kMinDeviceY, kMaxDeviceY, m_definition.serial.c_str());
             lastClampWarning = now;
         }
     }

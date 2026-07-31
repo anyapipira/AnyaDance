@@ -37,6 +37,15 @@ struct SolvedJoint {
     Quat rotation{};
 };
 
+// Optional rest-pose hand frame measured from the model's finger bones. The
+// finger axis points from the wrist toward the fingers; palm is the direction
+// the open palm faces. Both use the solved motion's world-space convention.
+struct SolvedHandAxes {
+    Vec3 finger{};
+    Vec3 palm{};
+    bool valid = false;
+};
+
 // One solved frame: world-space joint poses (OpenVR standing convention) plus
 // optional per-hand finger curls ordered thumb, index, middle, ring, pinky.
 struct SolvedFrame {
@@ -53,6 +62,7 @@ struct SolvedMotion {
     bool hasFingers = false;
     bool hasRest = false;
     std::array<SolvedJoint, kSolvedJointCount> rest{};
+    std::array<SolvedHandAxes, 2> restHandAxes{}; // left, right
     std::vector<SolvedFrame> frames;
 
     float DurationSec() const { return frames.empty() ? 0.0f : frames.back().t; }

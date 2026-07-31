@@ -39,7 +39,7 @@ void TestFrameState() {
 
 void TestSafety() {
     FrameState frame = MakeNeutralFrame();
-    frame.devices[DeviceSlot(DeviceIndex::Hmd)].position = {1.0f, 4.0f, -3.0f};
+    frame.devices[DeviceSlot(DeviceIndex::Hmd)].position = {1.0f, 30.0f, -3.0f};
     EXPECT_TRUE(ClampFrameY(frame));
     const DeviceState& hmd = frame.devices[DeviceSlot(DeviceIndex::Hmd)];
     EXPECT_NEAR(hmd.position.x, 1.0f, 0.0001f);
@@ -48,14 +48,14 @@ void TestSafety() {
     EXPECT_TRUE(hmd.y_clamped);
 
     for (DeviceState& device : frame.devices) {
-        device.position.y = 6.0f;
+        device.position.y = 30.0f;
     }
     EXPECT_TRUE(ClampFrameY(frame));
     for (const DeviceState& device : frame.devices) {
-        EXPECT_NEAR(device.position.y, 2.0f, 0.0001f);
+        EXPECT_NEAR(device.position.y, kMaxDeviceY, 0.0001f);
     }
 
-    // A frame already under the ceiling reports no clamp and clears the flags.
+    // Frames already in range report no clamp and clear the flags.
     FrameState low = MakeNeutralFrame();
     EXPECT_FALSE(ClampFrameY(low));
     for (const DeviceState& device : low.devices) {

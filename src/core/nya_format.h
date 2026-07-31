@@ -29,7 +29,7 @@ struct NyaClip {
 std::string SerializeNya(const NyaClip& clip);
 
 // Parse a .nya JSON document. Returns false and sets error on malformed input or
-// a wrong format tag. Device Y is clamped to kMaxDeviceY and finger bends to
+// a wrong format tag. Device Y is clamped to the supported range and finger bends to
 // [0, 1] on load, so a hand-edited file can never exceed the safe ranges.
 bool ParseNya(const std::string& text, NyaClip& out, std::string& error);
 

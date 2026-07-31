@@ -38,14 +38,16 @@ The companion UI starts and resets to a canonical test T-pose. These HMD-local p
 
 ```text
 HMD Y:            1.50 m
-Left controller:  (-0.62, -0.17, -0.20) m
-Right controller: ( 0.62, -0.17,  0.20) m
+Left controller:  (-0.68, -0.17, -0.10) m
+Right controller: ( 0.68, -0.17, -0.10) m
 Hip:              ( 0.00, -0.43, -0.05) m
 Left foot:        (-0.09, -1.24,  0.10) m
 Right foot:       ( 0.09, -1.24,  0.10) m
 ```
 
-With a neutral HMD at `(0.00, 1.50, 0.00)`, this puts the feet at `(-0.09, 0.26, 0.10)` and `(0.09, 0.26, 0.10)`.
+With a neutral HMD at `(0.00, 1.50, 0.00)`, this puts the controllers at
+`(-0.68, 1.33, -0.10)` and `(0.68, 1.33, -0.10)`, and the feet at
+`(-0.09, 0.26, 0.10)` and `(0.09, 0.26, 0.10)`.
 
 Reset preserves HMD X/Z and the HMD yaw only — it uprights the head, dropping pitch and roll, so the whole body faces one consistent direction. Other device positions are built from these HMD-yaw-relative offsets. Other device rotations use HMD yaw only, plus canonical local controller rotations:
 

@@ -1,5 +1,6 @@
 #include "virtual_device.h"
 #include "core/constants.h"
+#include "core/math3d.h"
 #include "log.h"
 
 #include <algorithm>

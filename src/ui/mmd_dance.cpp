@@ -68,6 +68,13 @@ std::wstring ExeDirectory() {
     return slash == std::wstring::npos ? std::wstring() : path.substr(0, slash);
 }
 
+std::wstring FindExecutableOnPath(const wchar_t* name) {
+    wchar_t found[MAX_PATH] = {};
+    const DWORD length = SearchPathW(
+        nullptr, name, nullptr, static_cast<DWORD>(std::size(found)), found, nullptr);
+    return (length > 0 && length < std::size(found)) ? std::wstring(found, length) : std::wstring();
+}
+
 // Newest-first list of "Blender Foundation\Blender X.Y" child dirs in a root.
 std::vector<std::wstring> BlenderVersionDirs(const std::wstring& root) {
     std::vector<std::wstring> dirs;
@@ -107,10 +114,23 @@ std::wstring DetectBlenderExeW() {
             }
         }
     }
-    // Fall back to whatever blender.exe is on PATH.
-    wchar_t found[MAX_PATH] = {};
-    if (SearchPathW(nullptr, L"blender.exe", nullptr, static_cast<DWORD>(std::size(found)), found, nullptr) > 0) {
-        return std::wstring(found);
+    // Fall back to executables on PATH. Microsoft Store installations expose
+    // blender-launcher.exe as an app execution alias instead of blender.exe;
+    // the launcher forwards Blender's headless command-line arguments.
+    if (const std::wstring blender = FindExecutableOnPath(L"blender.exe"); !blender.empty()) {
+        return blender;
+    }
+    if (const std::wstring launcher = FindExecutableOnPath(L"blender-launcher.exe"); !launcher.empty()) {
+        return launcher;
+    }
+
+    // WindowsApps normally appears on PATH, but check its per-user location as
+    // well in case the process inherited a customized PATH.
+    if (const std::wstring localAppData = EnvVar(L"LOCALAPPDATA"); !localAppData.empty()) {
+        const std::wstring launcher = localAppData + L"\\Microsoft\\WindowsApps\\blender-launcher.exe";
+        if (FileExists(launcher)) {
+            return launcher;
+        }
     }
     return std::wstring();
 }

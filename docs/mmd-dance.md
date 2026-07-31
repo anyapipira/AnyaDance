@@ -14,7 +14,8 @@ then **Play**.
 ## What you need
 
 - **Blender** (auto-detected from `C:\Program Files\Blender Foundation\Blender *`,
-  the `ANYADANCE_BLENDER` environment variable, or `PATH`).
+  Microsoft Store's `blender-launcher.exe` app execution alias, the
+  `ANYADANCE_BLENDER` environment variable, or `PATH`).
 - **MMD Tools** ([MMD-Blender/blender_mmd_tools](https://github.com/MMD-Blender/blender_mmd_tools))
   installed as a Blender add-on / extension (auto-detected from the Blender
   extension tree under `%APPDATA%`).

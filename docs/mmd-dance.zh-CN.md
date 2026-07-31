@@ -8,7 +8,7 @@
 
 ## 你需要准备
 
-- **Blender**（自动从 `C:\Program Files\Blender Foundation\Blender *`、`ANYADANCE_BLENDER` 环境变量或 `PATH` 检测）。
+- **Blender**（自动从 `C:\Program Files\Blender Foundation\Blender *`、Microsoft Store 的 `blender-launcher.exe` 应用执行别名、`ANYADANCE_BLENDER` 环境变量或 `PATH` 检测）。
 - **MMD Tools**（[MMD-Blender/blender_mmd_tools](https://github.com/MMD-Blender/blender_mmd_tools)），作为 Blender 插件/扩展安装（自动从 `%APPDATA%` 下的 Blender 扩展目录树检测）。
 - 一个 **VMD** 动作文件。
 - 动作所针对的 **PMX/PMD 模型**。MMD 模型属于第三方作品并带有各自的授权，因此需由你自行提供。选择该舞蹈所对应的模型效果最佳。

@@ -21,7 +21,7 @@ Re-run the registration script, which also applies the fully virtual settings:
 .\scripts\restart_steamvr.ps1
 ```
 
-If a physical HMD is connected, SteamVR may reject the second virtual HMD. Disconnect the physical HMD so the virtual one can become active.
+Disconnect the physical HMD before startup so AnyaDance's virtual HMD becomes the active HMD.
 
 ## Display Is Blurry Or Unclear
 

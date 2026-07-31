@@ -2,11 +2,11 @@
 
 ## Unreleased
 
-- Unregister Driver no longer opens the Restart SteamVR confirmation; unregistering only edits configuration files, and the status line already points to the separate Restart SteamVR button to apply the change.
-- The empty body-panel area now manipulates the whole rig: middle mouse drag rotates all six devices (yaw/pitch) about the HMD position, middle+right rolls them, and right mouse drag alone moves the rig vertically (clamped to the 2 m ceiling).
-- A right mouse drag on the HMD box now moves the HMD vertically, matching the rig gesture (the previous left+right chord still works).
-- The HMD can no longer be dragged below Y = 0 (only the HMD has this floor); the whole-rig vertical drag stops as a unit when the HMD reaches it.
-- Fixed the window width being reset when restoring from minimized: the minimum-size hint no longer measures the window frame from the iconic rects. Windows clears the minimized bit before the restore finishes, so the guard checks for a realized client area rather than relying on `IsIconic` alone.
+- Unregister Driver updates the configuration immediately; the separate Restart SteamVR button applies the change.
+- The empty body-panel area manipulates the whole rig: middle mouse drag rotates all six devices (yaw/pitch) about the HMD position, middle+right rolls them, and right mouse drag moves the rig vertically within the shared `0–25 m` Y range.
+- A right mouse drag on the HMD box moves the HMD vertically; the left+right chord provides the same gesture.
+- All device manipulation and loaded poses use the shared `0–25 m` Y range.
+- Window restoration measures a realized client area before updating its minimum-size hint, preserving the restored width.
 
 ## Initial public release
 

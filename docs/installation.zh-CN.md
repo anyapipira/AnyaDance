@@ -68,4 +68,4 @@ requireHmd = true
 `uninstall.ps1` 会先在 `%LOCALAPPDATA%\AnyaDance\uninstall-recovery` 下保存带时间戳的恢复快照，
 然后取消注册驱动；如果原始设置备份存在，则还原备份，否则清理已知的 AnyaDance 设置覆盖项；
 最后验证驱动已移除并重启 SteamVR。传入 `-NoRestart` 可让 SteamVR 保持停止状态。
-该脚本不会删除应用程序文件。
+应用程序文件会保留在原位置。

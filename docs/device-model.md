@@ -49,14 +49,14 @@ With a neutral HMD at `(0.00, 1.50, 0.00)`, this puts the controllers at
 `(-0.68, 1.33, -0.10)` and `(0.68, 1.33, -0.10)`, and the feet at
 `(-0.09, 0.26, 0.10)` and `(0.09, 0.26, 0.10)`.
 
-Reset preserves HMD X/Z and the HMD yaw only — it uprights the head, dropping pitch and roll, so the whole body faces one consistent direction. Other device positions are built from these HMD-yaw-relative offsets. Other device rotations use HMD yaw only, plus canonical local controller rotations:
+Reset anchors the HMD at `(0.00, 1.50, 0.00)` with identity rotation, producing a centered, forward-facing rig. Other device positions use the offsets above, and controller rotations use these canonical values:
 
 ```text
 Left controller:  (0.0, 0.0, -0.7071067811865475, 0.7071067811865475)
 Right controller: (0.0, 0.0,  0.7071067811865475, 0.7071067811865475)
 ```
 
-Hip and feet use identity local rotations composed with HMD yaw.
+Hip and feet use identity rotations.
 
 ## Virtual HMD Display
 

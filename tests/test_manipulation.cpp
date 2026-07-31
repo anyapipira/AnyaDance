@@ -142,8 +142,8 @@ void TestManipulation() {
 
     frame.devices[DeviceSlot(DeviceIndex::LeftController)].position.y = 1.99f;
     leftDrag = BeginDrag(frame, DeviceIndex::LeftController);
-    ApplyDragDelta(leftDrag, frame, 50.0f, -1000.0f, ManipulationModifier_None);
-    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::LeftController)].position.y, 2.0f, 0.0001f);
+    ApplyDragDelta(leftDrag, frame, 50.0f, -100000.0f, ManipulationModifier_None);
+    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::LeftController)].position.y, kMaxDeviceY, 0.0001f);
 
     frame = BuildResetTPose(MakeNeutralFrame());
     leftDrag = BeginDrag(frame, DeviceIndex::LeftController);
@@ -275,6 +275,13 @@ void TestManipulation() {
         }
         return highest;
     };
+    const auto lowestY = [](const FrameState& f) {
+        float lowest = f.devices[0].position.y;
+        for (const DeviceState& device : f.devices) {
+            lowest = std::min(lowest, device.position.y);
+        }
+        return lowest;
+    };
     const float hmdToHipStart = frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y -
                                 frame.devices[DeviceSlot(DeviceIndex::Hip)].position.y;
     rigDrag = BeginDrag(frame, DeviceIndex::Hmd);
@@ -286,8 +293,8 @@ void TestManipulation() {
     ApplyRigDragDelta(rigDrag, frame, 0.0f, 20.0f, ManipulationModifier_Shift);
     EXPECT_NEAR(highestY(frame), kMaxDeviceY - 20.0f * kTranslationMetersPerCount, 0.0001f);
 
-    // The HMD (only) also has a floor at kMinHmdY: a downward drag stops at
-    // Y = 0 with the same re-anchoring, so a reversed drag ascends immediately.
+    // Direct HMD manipulation uses the shared floor and re-anchors at the bound,
+    // so a reversed drag ascends immediately.
     frame = BuildResetTPose(MakeNeutralFrame());
     hmdDrag = BeginDrag(frame, DeviceIndex::Hmd);
     ApplyDragDelta(hmdDrag, frame, 0.0f, 100000.0f, ManipulationModifier_Shift);
@@ -296,27 +303,29 @@ void TestManipulation() {
     EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y,
                 kMinHmdY + 20.0f * kTranslationMetersPerCount, 0.0001f);
 
-    // Other devices keep no floor: a foot can be dragged below Y = 0.
+    // Direct foot manipulation uses the same shared floor.
     frame = BuildResetTPose(MakeNeutralFrame());
     leftDrag = BeginDrag(frame, DeviceIndex::LeftFoot);
     ApplyDragDelta(leftDrag, frame, 0.0f, 1000.0f, ManipulationModifier_None);
-    EXPECT_TRUE(frame.devices[DeviceSlot(DeviceIndex::LeftFoot)].position.y < 0.0f);
+    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::LeftFoot)].position.y, kMinDeviceY, 0.0001f);
+    ApplyDragDelta(leftDrag, frame, 0.0f, -20.0f, ManipulationModifier_None);
+    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::LeftFoot)].position.y,
+                kMinDeviceY + 20.0f * kTranslationMetersPerCount, 0.0001f);
 
-    // The rig's vertical move stops as a unit when the HMD reaches its floor,
-    // preserving the rig's shape, and re-anchors so a reversed drag rises
-    // immediately.
+    // The rig's vertical move preserves its shape inside the shared range and
+    // re-anchors at the floor so a reversed drag rises immediately.
     frame = BuildResetTPose(MakeNeutralFrame());
     const float rigHipOffset = frame.devices[DeviceSlot(DeviceIndex::Hip)].position.y -
                                frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y;
     rigDrag = BeginDrag(frame, DeviceIndex::Hmd);
     ApplyRigDragDelta(rigDrag, frame, 0.0f, 100000.0f, ManipulationModifier_Shift);
-    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y, kMinHmdY, 0.0001f);
+    EXPECT_NEAR(lowestY(frame), kMinDeviceY, 0.0001f);
     EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::Hip)].position.y -
                     frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y,
                 rigHipOffset, 0.0001f);
     ApplyRigDragDelta(rigDrag, frame, 0.0f, -20.0f, ManipulationModifier_Shift);
-    EXPECT_NEAR(frame.devices[DeviceSlot(DeviceIndex::Hmd)].position.y,
-                kMinHmdY + 20.0f * kTranslationMetersPerCount, 0.0001f);
+    EXPECT_NEAR(lowestY(frame),
+                kMinDeviceY + 20.0f * kTranslationMetersPerCount, 0.0001f);
 
     DeviceIndex mirroredDevice = DeviceIndex::Hmd;
     EXPECT_TRUE(MirroredDeviceFor(DeviceIndex::LeftController, mirroredDevice));

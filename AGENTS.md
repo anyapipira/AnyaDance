@@ -82,8 +82,7 @@ a root turns off fetching for that dependency.
   `kProtocolVersion` changes. Shared constants live in `src/core/constants.h`.
 - Preserve OpenVR-required names: `HmdDriverFactory`, `driver.vrdrivermanifest`,
   `knuckles`, and OpenVR input paths.
-- Only fully-virtual mode is supported (the virtual HMD is the active HMD); there
-  is no physical-HMD mode.
+- Fully virtual mode makes the AnyaDance virtual HMD the active HMD.
 - All six devices start connected and valid at neutral poses. Accepted packets
   update the latest pose and controller inputs. If packets stop, SteamVR
   continues seeing each device connected, valid, and `TrackingResult_Running_OK`
@@ -91,7 +90,7 @@ a root turns off fetching for that dependency.
   virtual HMD in fully virtual mode.
 - All devices set `Prop_IgnoreMotionForStandby_Bool` so SteamVR does not idle a
   held-still virtual device into standby/powersave.
-- All device Y is clamped to `2.0 m` (`kMaxDeviceY`) — in the UI before sending
+- All device Y is clamped to `0–25 m` (`kMinDeviceY`–`kMaxDeviceY`) — in the UI before sending
   and in the driver after packet validation.
 - The UDP log is always recorded in English. UI strings are localized through the
   row-per-string table in `src/ui/localization.*`; access with `Tr(Text::...)`.

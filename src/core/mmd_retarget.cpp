@@ -203,9 +203,8 @@ Vec3 ControllerReferenceTwistAxis(Vec3 shoulder, Vec3 elbow, Vec3 wrist) {
     return BestPerpendicular(candidates, 5, fingerAxis);
 }
 
-// Build the rest OpenVR controller orientation from arm anatomy. This fallback
-// recovers the finger direction when an older solve has no exported hand frame;
-// the palm roll remains heuristic in that case.
+// Build the rest OpenVR controller orientation from shoulder, elbow, and wrist
+// anatomy for joint-based hand-frame calibration.
 Quat ControllerRestRotationFromForearm(Vec3 shoulder, Vec3 elbow, Vec3 wrist, bool isLeft) {
     const Vec3 fingerAxis = NormalizeVec(Sub(wrist, elbow), {0.0f, -1.0f, 0.0f});
     const Vec3 handForward = ControllerReferenceTwistAxis(shoulder, elbow, wrist);

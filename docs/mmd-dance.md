@@ -65,8 +65,8 @@ correspondingly small (`src/core/mmd_retarget.cpp`):
 - **Controller orientation from the solved wrist.** The model-specific wrist bone
   frame is calibrated to the OpenVR controller frame at rest, then follows the
   solved wrist rigidly so flexion, deviation, and roll all survive. Exported rest
-  finger/palm axes set the absolute palm roll; models without them fall back to
-  an arm-anatomy rest frame.
+  finger/palm axes set the absolute palm roll, while shoulder/elbow/wrist anatomy
+  provides the joint-based rest alignment.
 - **Fingers.** When the model has finger bones, per-hand curls drive the
   controllers' skeletal hand pose.
 
@@ -99,19 +99,18 @@ stops playback.
 Once a dance is analyzed, **Save .nya** writes the retargeted result to a `.nya`
 clip file. **Load .nya** reads one back and enables Play immediately — loading a
 clip skips both the Blender solve and the remap, so a saved dance plays instantly
-on later runs (and on machines without Blender installed).
+on later runs.
 
 A `.nya` file stores device-level frames (the six device poses plus per-hand
 finger bends), so it is the same format the main window uses for **Save Pose** /
 **Load Pose**: a pose is just a one-frame clip. Device Y is clamped to the 0–25 m
 limit and finger bends to `[0, 1]` on load. See `src/core/nya_format.*`.
 
-## Notes and limits
+## Runtime behavior
 
 - The first solve of a long dance can take Blender several seconds to a minute;
   the UI keeps rendering and streaming a T-pose while it runs.
-- Quality depends on matching the motion to its intended model. A wildly
-  different model (very different proportions) will still play but may look off.
+- Motion/model proportion matching determines retarget quality.
 - This is offline-solve + live-play: the solved motion is used by the UI for
   playback. Standard VRChat anti-cheat caveats in the project
   [disclaimer](../DISCLAIMER.md) apply.

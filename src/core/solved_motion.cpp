@@ -132,9 +132,8 @@ bool ParseSolvedMotion(const std::string& jsonText, SolvedMotion& out, std::stri
         motion.hasRest = true;
     }
 
-    // New solves include a model-derived rest hand frame. Keep this optional so
-    // solved JSON produced by older AnyaDance builds remains loadable. A malformed
-    // per-hand hint is ignored and the retargeter falls back to arm anatomy.
+    // Read each model-derived rest hand frame independently. Valid hand frames
+    // provide the retargeter's model-specific controller calibration.
     if (const Value* axes = root.Find("rest_hand_axes"); axes != nullptr && axes->IsObject()) {
         ReadHandAxes(axes->Find("left_controller"), motion.restHandAxes[0]);
         ReadHandAxes(axes->Find("right_controller"), motion.restHandAxes[1]);

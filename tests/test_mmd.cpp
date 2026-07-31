@@ -138,7 +138,7 @@ void TestMmdRetarget() {
 
     // The controller basis and palm offset follow every live wrist degree of
     // freedom. A 90-degree wrist flex turns both the pointing direction and the
-    // palm anchor down; the former forearm-only reconstruction lost this motion.
+    // palm anchor down, exercising the full wrist transform.
     SolvedMotion flexedMotion = MakeStandingMotion();
     flexedMotion.frames[1].joints[JointSlot(SolvedJointId::LeftWrist)].rotation =
         FromAxisAngle({0.0f, 0.0f, 1.0f}, DegToRad(90.0f));
@@ -175,7 +175,7 @@ void TestMmdRetarget() {
     FrameState mid = SampleDanceMotion(dance, 0.5f, false);
     EXPECT_NEAR(mid.devices[DeviceSlot(DeviceIndex::Hmd)].position.y, 1.65f, 0.01f);
 
-    // Anchoring shifts X/Z without touching height.
+    // Anchoring shifts X/Z while preserving height.
     AnchorDanceFrame(mid, 2.0f, -3.0f);
     EXPECT_NEAR(mid.devices[DeviceSlot(DeviceIndex::Hip)].position.x, 2.0f, 0.001f);
     EXPECT_NEAR(mid.devices[DeviceSlot(DeviceIndex::Hip)].position.z, -3.0f, 0.001f);

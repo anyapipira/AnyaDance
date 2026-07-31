@@ -25,7 +25,7 @@ This software is provided for legitimate, authorized testing and development onl
 
 Feeding virtual devices or spoofed tracking into a live online game may violate that game's Terms of Service and can be detected by its anti-cheat system, which may result in the suspension or permanent ban of your account.
 
-Registering the driver changes your SteamVR configuration: it puts SteamVR into a fully virtual mode and writes to `steamvr.vrsettings`, so while the driver is registered your real headset, controllers, and trackers will not be tracked (a backup is made, and unregistering restores it). The virtual HMD also continuously renders both eyes through the SteamVR compositor, which consumes additional GPU and CPU; raising the render resolution increases that load further.
+Registering the driver changes your SteamVR configuration: it activates AnyaDance's fully virtual HMD, controllers, and trackers and writes to `steamvr.vrsettings`. Registration creates a backup, and unregistering restores the original configuration. The virtual HMD continuously renders both eyes through the SteamVR compositor, which consumes additional GPU and CPU; raising the render resolution increases that load further.
 
 You use this software entirely at your own risk. It is provided "as is" without warranty of any kind, and the authors accept no responsibility or liability for any consequences of use or misuse, including account bans or loss of access.
 
@@ -119,7 +119,7 @@ The tests cover protocol validation, safety clamping, T-pose reset math, keyboar
 
 SteamVR must be restarted after registration changes and after rebuilding the driver DLL.
 
-> **Unregister when you are done.** While the driver is registered, SteamVR runs in fully virtual mode — real headsets, controllers, and trackers will not be tracked. See [Unregister](#unregister) to restore your original settings.
+> **Unregister when you are done.** Registration activates AnyaDance's fully virtual device set. See [Unregister](#unregister) to restore your original SteamVR settings.
 
 ## HMD Render Resolution
 
@@ -169,9 +169,9 @@ Z     left trigger while held
 X     right trigger while held
 ```
 
-Mouse manipulation uses the six device boxes. The capture panel and boxes resize with the UI window. The HMD box allows rotation, plus vertical (Y) movement with a right mouse drag (clamped between 0 and the 2 m Y limit; only the HMD has the floor); a left+right chord also works. Other devices use left mouse drag for local X/Y movement, middle mouse drag for rotation, and right mouse drag for depth movement. The HMD/Global frame radio buttons choose whether manipulation uses the HMD yaw basis or fixed world axes. The hand and foot pair mirror checkboxes use the same frame setting: HMD mode mirrors across the HMD-yaw YZ plane, and Global mode mirrors across world axes centered on the HMD position. The mouse wheel opens and closes both hands' fingers. Hold a number key while scrolling to bend a single finger: `1`-`5` are the left hand from pinky to thumb, `6`-`0` are the right hand from thumb to pinky (so `5`/`6` are the thumbs and `1`/`0` the pinkies). Each finger is clamped to `[0, 1]`, and scrolling all the way in one direction resets every finger to fully open or fully closed. Closing every finger on a hand into a fist (all bends near full) presses that hand's grip; releasing any finger releases it, which drives VRChat's grab.
+Mouse manipulation uses the six device boxes. The capture panel and boxes resize with the UI window. The HMD box allows rotation, plus vertical (Y) movement with a right mouse drag; a left+right chord provides the same vertical gesture. Other devices use left mouse drag for local X/Y movement, middle mouse drag for rotation, and right mouse drag for depth movement. All device Y positions use the `0–25 m` range. The HMD/Global frame radio buttons choose whether manipulation uses the HMD yaw basis or fixed world axes. The hand and foot pair mirror checkboxes use the same frame setting: HMD mode mirrors across the HMD-yaw YZ plane, and Global mode mirrors across world axes centered on the HMD position. The mouse wheel opens and closes both hands' fingers. Hold a number key while scrolling to bend a single finger: `1`-`5` are the left hand from pinky to thumb, `6`-`0` are the right hand from thumb to pinky (so `5`/`6` are the thumbs and `1`/`0` the pinkies). Each finger is clamped to `[0, 1]`, and scrolling all the way in one direction resets every finger to fully open or fully closed. Closing every finger on a hand into a fist (all bends near full) presses that hand's grip; releasing any finger releases it, which drives VRChat's grab.
 
-Dragging the empty area of the body panel acts as the right thumbstick: the press point is the stick center, and dragging deflects it within ±1 on each axis, returning to neutral on release. This is meant for navigating the right-hand quick menu (opened by holding `M`). The empty area also manipulates the whole rig at once: a middle mouse drag rotates all six devices (yaw/pitch) about the HMD position, a middle+right drag rolls them about the same pivot, and a right mouse drag alone moves the whole rig vertically (the rig stops as a unit when its highest device reaches the 2 m ceiling or the HMD reaches Y = 0). Rig rotation uses the same HMD/Global frame setting as the per-device gestures.
+Dragging the empty area of the body panel acts as the right thumbstick: the press point is the stick center, and dragging deflects it within ±1 on each axis, returning to neutral on release. This is meant for navigating the right-hand quick menu (opened by holding `M`). The empty area also manipulates the whole rig at once: a middle mouse drag rotates all six devices (yaw/pitch) about the HMD position, a middle+right drag rolls them about the same pivot, and a right mouse drag moves the whole rig vertically while preserving its shape within the `0–25 m` Y range. Rig rotation uses the same HMD/Global frame setting as the per-device gestures.
 
 ## MMD Dance
 
@@ -190,7 +190,7 @@ Requirements: [Blender](https://www.blender.org/) and the
 [MMD Tools](https://github.com/MMD-Blender/blender_mmd_tools) add-on (both
 auto-detected), plus your own model. MMD models are third-party works with their
 own licenses. See [docs/mmd-dance.md](docs/mmd-dance.md) for details, parameters,
-and limits.
+and runtime behavior.
 
 Once a dance is analyzed, **Save .nya** writes the result to a clip file. **Load
 .nya** reads one back and enables Play immediately — loading skips both the
@@ -202,13 +202,12 @@ A `.nya` file is a small JSON clip of device-level frames — the six device pos
 plus per-hand finger bends — ready to stream with no further conversion. The
 format is the same for poses and animations: a **pose** is a one-frame clip
 (played as a held loop of that single frame) and an **animation** (such as a
-saved MMD dance) is many timed frames. Device Y is clamped to the 2 m limit and
-finger bends to `[0, 1]` on load, so an edited file can never exceed the safe
-ranges.
+saved MMD dance) is many timed frames. Loading clamps device Y to `0–25 m` and
+finger bends to `[0, 1]`.
 
 ## Safety And Liveness
 
-All six devices have a hard maximum Y value of `2.0 m`. The UI clamps before serialization and the native driver clamps again after packet validation.
+All six devices use a `0–25 m` Y range. The UI clamps before serialization and the native driver clamps again after packet validation.
 
 All six devices start connected and valid at neutral poses. Accepted packets update the latest pose and controller inputs. If packets stop, SteamVR continues to see each device connected, valid, and `TrackingResult_Running_OK` at its last accepted pose.
 
@@ -230,9 +229,9 @@ See [docs/protocol.md](docs/protocol.md) for the full protocol.
 .\scripts\uninstall.ps1
 ```
 
-**Unregistering is required to restore normal SteamVR operation.** While the AnyaDance driver is registered, SteamVR treats all six virtual devices as real hardware. This blocks real headsets, controllers, and trackers from being recognised — your physical VR devices will not work until the driver is removed.
+**Unregistering restores the original SteamVR configuration.** While registered, SteamVR uses the six-device AnyaDance virtual rig. Unregistering restores the settings backup created during registration.
 
-`uninstall.ps1` saves a recovery snapshot, removes the driver entry, restores `steamvr.vrsettings` from the registration backup when available, verifies removal, and restarts SteamVR. It does not delete the AnyaDance application files.
+`uninstall.ps1` saves a recovery snapshot, removes the driver entry, restores `steamvr.vrsettings` from the registration backup when available, verifies removal, restarts SteamVR, and leaves the AnyaDance application files in place.
 
 You can also unregister from within the UI using the **Unregister Driver** button, which uses the same recovery files and prompts to restart SteamVR.
 

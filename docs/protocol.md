@@ -155,7 +155,7 @@ Each device entry requires:
 | --- | --- | --- |
 | `valid` | Boolean | Required for the entry to parse. Version 1 keeps every virtual device valid after startup, so the driver currently reports `true` to SteamVR regardless of this value. |
 | `connected` | Boolean | Required for the entry to parse. Version 1 keeps every virtual device connected after startup, so the driver currently reports `true` to SteamVR regardless of this value. |
-| `pose.position` | Three-number array | Required. Metres in driver pose space; every component must be finite and within `-10.0` to `10.0`. Y is additionally capped at `2.0`. |
+| `pose.position` | Three-number array | Required. Metres in driver pose space; every component must be finite and within `-30.0` to `30.0`. Y is clamped to `0.0`–`25.0`. |
 | `pose.rotation_xyzw` | Four-number array | Required. Quaternion in XYZW order; values must be finite and its squared length must be from `0.5` through `1.5`. Accepted values are normalized. |
 
 The `inputs` object is optional. Only `left_controller` and `right_controller`
@@ -172,7 +172,7 @@ retained.
 | `trigger_click` | Boolean | Default `false` | Drives `/input/trigger/click`. |
 | `trigger_value` | Number | Clamped to `0.0`–`1.0`; defaults to `1.0` when `trigger_click` is true, otherwise `0.0` | Drives `/input/trigger/value`. |
 | `menu_click` | Boolean | Default `false` | Drives `/input/application_menu/click`. |
-| `system_click` | Boolean | Default `false` | Accepted and emitted for version-1 compatibility, but the current driver exposes no `/input/system/click` component, so it has no OpenVR effect. |
+| `system_click` | Boolean | Default `false` | Preserved in version-1 packets. |
 | `a_click` | Boolean | Default `false` | Drives `/input/a/click`. |
 | `b_click` | Boolean | Default `false` | Drives `/input/b/click`. |
 | `grip_click` | Boolean | Default `false` | Drives `/input/grip/click` and `/input/grip/touch`. |
@@ -195,7 +195,7 @@ A device entry is ignored if it has:
 
 - missing required fields
 - non-finite position or quaternion values
-- absolute position component above `10.0 m`
+- absolute position component above `30.0 m`
 - quaternion squared length outside the accepted `0.5` to `1.5` range
 
 Accepted quaternions are normalized before use.
@@ -207,8 +207,8 @@ clamped to the `0–25 m` range by both the companion UI and the driver.
 
 ## Pose Liveness
 
-The driver does not time out device poses. All six virtual devices start connected
-and valid at their neutral poses before the first packet. When packets arrive,
+All six virtual devices start connected and valid at their neutral poses before
+the first packet. When packets arrive,
 the latest valid packet for each device updates its pose and controller inputs.
 If packets stop, SteamVR continues to see the device connected and valid at its
 last pose.
@@ -238,6 +238,6 @@ The driver exposes Valve Index-compatible controller components:
 /input/skeleton/right
 ```
 
-`/input/grip/touch` and `/input/grip/force` do not have separate wire fields;
-they are derived from `grip_click` and `grip_value`, respectively. Skeleton
-components likewise derive their transforms from `finger_bends`.
+`grip_click` drives `/input/grip/touch`, and `grip_value` drives
+`/input/grip/force`. Skeleton components derive their transforms from
+`finger_bends`.

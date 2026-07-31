@@ -15,7 +15,7 @@ The core library owns data structures and testable behavior:
 - device constants and public identifiers
 - vector/quaternion helpers using XYZW quaternions for wire poses
 - UDP protocol parsing and serialization
-- `Y <= 2.0 m` safety clamp
+- `0 <= Y <= 25.0 m` safety clamp
 - canonical T-pose reset
 - keyboard input mapping (every key maps directly to a held button or axis)
 - mouse manipulation math

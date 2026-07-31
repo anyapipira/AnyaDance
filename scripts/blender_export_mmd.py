@@ -42,8 +42,7 @@ JOINT_ALIASES: dict[str, tuple[str, ...]] = {
     "right_toe": ("右つま先", "右足先", "つま先.R", "足先EX.R", "right toe", "toe_R"),
 }
 
-# Joints that may borrow another joint when the model lacks them, so a model
-# without explicit toe bones still produces a usable floor/height reference.
+# Toe joints use the corresponding ankle as their default floor/height reference.
 JOINT_FALLBACK: dict[str, str] = {
     "left_toe": "left_ankle",
     "right_toe": "right_ankle",
@@ -355,8 +354,8 @@ def _read_rest_hand_axes(
 
     The wrist matrix carries all live wrist motion, but its bone-local axes are
     model-specific. These two anatomical directions let the retargeter calibrate
-    the model wrist frame to the OpenVR controller frame without guessing palm
-    roll. Models without the three required finger bases use the arm fallback.
+    the model wrist frame to the OpenVR controller frame and preserve palm roll.
+    Shoulder, elbow, and wrist anatomy supplies the joint-based rest alignment.
     """
     if finger_selected is None:
         return {}

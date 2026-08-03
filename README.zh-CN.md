@@ -137,6 +137,18 @@ ctest --test-dir build -C Release --output-on-failure
 
 在 `steamvr.vrsettings` 中设置的值会覆盖驱动默认值（`resources\settings\default.vrsettings`）。同一小节还提供 `headset_window_width`、`headset_window_height`、`headset_window_eye_mode` 与 `headset_window_preserve_aspect`，用于配置桌面镜像窗口；详见 [docs/device-model.zh-CN.md](docs/device-model.zh-CN.md)。
 
+驱动默认还会向 UI 报告已处理的 UDP 命令。可在同一小节中配置目标端点：
+
+```json
+"driver_anyadance": {
+    "command_log_enabled": true,
+    "command_log_host": "127.0.0.1",
+    "command_log_port": 39571
+}
+```
+
+UI 中的 **监视驱动命令** 开关会立即启动或停止监听器。把设置指向其他 IPv4 监听器即可在别处接收带版本号的报告。数据包结构与传递行为见 [docs/protocol.zh-CN.md](docs/protocol.zh-CN.md#驱动命令日志)。
+
 ## 运行测试界面
 
 ```powershell
@@ -148,7 +160,7 @@ ctest --test-dir build -C Release --output-on-failure
 - 自动以 60 Hz 开始 UDP 推送
 - 在最小化或失去焦点时仍继续推送
 - 正常退出时发送一帧中性输入
-- UDP 日志始终为英文，省略未变化的保活数据包，并标明每条记录的具体原因：变化的按键与动作（例如 `Z left trigger down`）、被拖拽的设备（例如 `Hip manipulated`），或手指弯曲的变化
+- UDP 日志始终为英文，并可即时切换驱动命令监视；监视启用时，驱动处理报告会显示来自 UI 和第三方 UDP 发送器的命令，同时避免重复的成功发送记录
 - 支持悬停或固定行查看详情，并提供三种针对载荷的操作：“复制”（原始请求体）、“复制重发命令”（可直接运行的 PowerShell UDP 单行命令）以及“重新发送”（由 UI 通过自身套接字重发该数据报）
 - 可通过自身按钮将其所在文件夹注册/取消注册为 SteamVR 驱动并重启 SteamVR（带确认）
 - 提供“窗口置顶”复选框，可将窗口固定在其他窗口之上；该选择会在多次运行间记住

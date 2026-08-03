@@ -17,6 +17,7 @@ int main() {
     TestFingerBend();
     TestFingerGrip();
     TestApplyDanceFingerBends();
+    TestDriverLogProtocol();
     TestLog();
     TestJson();
     TestMmdParse();

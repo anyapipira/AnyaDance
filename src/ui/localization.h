@@ -18,6 +18,7 @@ enum class Language : std::size_t {
 enum class Text : std::size_t {
     Reset = 0,
     UdpLog,
+    MonitorDriverCommands,
     LogScrollLatest,
     Clear,
     Copy,

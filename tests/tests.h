@@ -15,6 +15,7 @@ void TestManipulation();
 void TestFingerBend();
 void TestFingerGrip();
 void TestApplyDanceFingerBends();
+void TestDriverLogProtocol();
 void TestLog();
 void TestJson();
 void TestMmdParse();

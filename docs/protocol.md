@@ -15,6 +15,88 @@ accepted datagram size: less than 8192 bytes
 
 The driver binds to loopback only. Senders treat `sendto` success as local socket success.
 
+## Driver Command Logging
+
+The driver emits a best-effort telemetry datagram after processing each pose
+datagram that fits its receive buffer. The default destination is the companion
+UI's loopback listener:
+
+```text
+UDP
+127.0.0.1:39571
+UTF-8 JSON
+logging version: 1
+maximum logging datagram size: 65507 bytes
+```
+
+The logging destination is independent of the command receiver. Configure it in
+the `driver_anyadance` section of `steamvr.vrsettings` and restart SteamVR to
+apply a change:
+
+```json
+"driver_anyadance": {
+    "command_log_enabled": true,
+    "command_log_host": "127.0.0.1",
+    "command_log_port": 39571
+}
+```
+
+`command_log_host` accepts an IPv4 address. Point it at another listener to
+consume driver reports outside the companion UI. `command_log_enabled` controls
+report generation. These values default to the entries shipped in
+`resources/settings/default.vrsettings`.
+
+Each packet uses this shape:
+
+```json
+{
+  "version": 1,
+  "event": "command_processed",
+  "sequence": 42,
+  "source": {
+    "host": "127.0.0.1",
+    "port": 54321
+  },
+  "command": {
+    "protocol": "pose_frame",
+    "bytes": 347,
+    "accepted": true,
+    "devices": ["hmd", "left_controller"],
+    "y_clamped": ["hmd"],
+    "payload": "{\"version\":1,...}"
+  },
+  "detail": "accepted 2 device entries; clamped Y for 1"
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `version` | Driver logging protocol version. Version 1 is current. |
+| `event` | Event type; version 1 emits `command_processed`. |
+| `sequence` | Monotonic report number for the current driver receiver lifetime. It restarts at driver startup. |
+| `source.host`, `source.port` | Endpoint that sent the original pose datagram to port `39570`. |
+| `command.protocol` | Command protocol name; version 1 uses `pose_frame`. |
+| `command.bytes` | Byte length of the original command datagram. |
+| `command.accepted` | `true` when at least one recognized device entry was accepted and stored. |
+| `command.devices` | Recognized device entries accepted from this datagram. |
+| `command.y_clamped` | Accepted device entries whose Y value was clamped. |
+| `command.payload` | Original command datagram as a JSON string, retained for inspection and resend. |
+| `detail` | Compact English processing summary. |
+
+The report socket is non-blocking and telemetry delivery is intentionally
+lossy. A full socket buffer, unavailable listener, invalid logging endpoint, or
+network delivery failure drops the report while command processing continues.
+Serialization and sending run on the UDP receiver thread, outside SteamVR's
+`RunFrame` path.
+
+The UI's **Monitor driver commands** switch hot-starts and hot-stops the default
+listener. While the listener is bound, driver reports are the source of truth
+for successful command rows and the UI suppresses its own successful-send rows.
+Local socket failures remain visible because the driver cannot report a command
+it did not receive. Rapid accepted reports from the same sender are coalesced in
+100 ms display windows; rejected reports remain individual rows. Coalescing is
+limited to the UI display—the driver emits a report for each processed command.
+
 ## Coordinate Expectations
 
 Positions are in metres in the driver pose coordinate space expected by SteamVR for this driver. Quaternions use XYZW order:

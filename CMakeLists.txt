@@ -32,6 +32,7 @@ endif()
 set(ANYADANCE_OUTPUT_DRIVER_ROOT "${CMAKE_BINARY_DIR}/out/anyadance")
 
 add_library(anyadance_core STATIC
+    src/core/driver_log_protocol.cpp
     src/core/frame_state.cpp
     src/core/input_state.cpp
     src/core/json.cpp
@@ -155,6 +156,7 @@ if(ANYADANCE_BUILD_UI)
     add_executable(AnyaDanceUI WIN32
         src/ui/main.cpp
         src/ui/ui_state.cpp
+        src/ui/driver_log_listener.cpp
         src/ui/input.cpp
         src/ui/panel_main.cpp
         src/ui/panel_body.cpp
@@ -221,6 +223,7 @@ if(ANYADANCE_BUILD_TESTS AND BUILD_TESTING)
         tests/test_input.cpp
         tests/test_manipulation.cpp
         tests/test_finger.cpp
+        tests/test_driver_log_protocol.cpp
         tests/test_udp_log.cpp
         tests/test_json.cpp
         tests/test_mmd.cpp

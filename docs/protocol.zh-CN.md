@@ -15,6 +15,71 @@ version: 1
 
 驱动仅绑定回环地址。发送端将 `sendto` 成功视为本地套接字成功。
 
+## 驱动命令日志
+
+驱动处理每个能够装入接收缓冲区的姿态数据报后，都会以尽力而为的方式发送一份遥测数据报。默认目标是伴随 UI 的回环监听端点：
+
+```text
+UDP
+127.0.0.1:39571
+UTF-8 JSON
+日志版本：1
+日志数据报最大尺寸：65507 字节
+```
+
+日志目标端点独立于命令接收端点。可在 `steamvr.vrsettings` 的 `driver_anyadance` 小节中配置；修改后重启 SteamVR：
+
+```json
+"driver_anyadance": {
+    "command_log_enabled": true,
+    "command_log_host": "127.0.0.1",
+    "command_log_port": 39571
+}
+```
+
+`command_log_host` 接受 IPv4 地址。将其指向其他监听器即可在伴随 UI 之外接收驱动报告。`command_log_enabled` 控制是否生成报告。默认值来自随包提供的 `resources/settings/default.vrsettings`。
+
+每个数据包采用以下结构：
+
+```json
+{
+  "version": 1,
+  "event": "command_processed",
+  "sequence": 42,
+  "source": {
+    "host": "127.0.0.1",
+    "port": 54321
+  },
+  "command": {
+    "protocol": "pose_frame",
+    "bytes": 347,
+    "accepted": true,
+    "devices": ["hmd", "left_controller"],
+    "y_clamped": ["hmd"],
+    "payload": "{\"version\":1,...}"
+  },
+  "detail": "accepted 2 device entries; clamped Y for 1"
+}
+```
+
+| 字段 | 含义 |
+| --- | --- |
+| `version` | 驱动日志协议版本；当前为版本 1。 |
+| `event` | 事件类型；版本 1 发送 `command_processed`。 |
+| `sequence` | 当前驱动接收器生命周期内单调递增的报告编号；驱动启动时重新计数。 |
+| `source.host`、`source.port` | 向端口 `39570` 发送原始姿态数据报的端点。 |
+| `command.protocol` | 命令协议名称；版本 1 使用 `pose_frame`。 |
+| `command.bytes` | 原始命令数据报的字节长度。 |
+| `command.accepted` | 至少有一个已识别设备条目被接受并保存时为 `true`。 |
+| `command.devices` | 此数据报中被接受的已识别设备条目。 |
+| `command.y_clamped` | Y 值经过钳制的已接受设备条目。 |
+| `command.payload` | 以 JSON 字符串保存的原始命令数据报，可用于检查与重发。 |
+| `detail` | 简洁的英文处理摘要。 |
+
+报告套接字采用非阻塞方式，遥测传递按尽力而为原则工作。套接字缓冲区已满、监听器未运行、日志端点无效或网络传递失败时会丢弃该报告，命令处理仍会继续。序列化与发送位于 UDP 接收线程，不进入 SteamVR 的 `RunFrame` 路径。
+
+UI 中的 **监视驱动命令** 开关可即时启动或停止默认监听器。监听器绑定期间，驱动报告是成功命令日志行的事实来源，UI 会抑制自身的成功发送记录。本地套接字错误仍会显示，因为驱动无法报告它没有收到的命令。来自同一发送端的快速成功报告会按 100 毫秒显示窗口合并；拒绝报告则逐条保留。合并仅作用于 UI 显示，驱动仍会为每条已处理命令发送报告。
+
 ## 坐标约定
 
 位置以米为单位，处于该驱动向 SteamVR 提供的驱动姿态坐标空间中。四元数使用 XYZW 顺序：

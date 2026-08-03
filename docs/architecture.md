@@ -15,6 +15,7 @@ The core library owns data structures and testable behavior:
 - device constants and public identifiers
 - vector/quaternion helpers using XYZW quaternions for wire poses
 - UDP protocol parsing and serialization
+- driver command-log protocol parsing and serialization
 - `0 <= Y <= 25.0 m` safety clamp
 - canonical T-pose reset
 - keyboard input mapping (every key maps directly to a held button or axis)
@@ -29,10 +30,10 @@ The SteamVR driver registers up to six devices:
 - left and right `knuckles` controllers
 - hip, left foot, and right foot generic trackers
 
-The driver starts a loopback UDP receiver on `127.0.0.1:39570`. Valid samples update per-device pose state. Invalid packets are ignored. The driver clamps device Y to the supported `0–25 m` range after validation as a defense in depth.
+The driver starts a loopback UDP receiver on `127.0.0.1:39570`. Valid samples update per-device pose state. Invalid packets are ignored. The driver clamps device Y to the supported `0–25 m` range after validation as a defense in depth. After each parse attempt, the receiver thread sends a versioned command report through a non-blocking UDP socket. The destination defaults to the UI at `127.0.0.1:39571` and is configurable through the driver settings.
 
 All devices start valid at neutral poses and remain valid if packets stop. The driver reports the latest accepted pose as connected, valid, and `TrackingResult_Running_OK`.
 
 ## UI
 
-The companion UI has a UI thread and a streaming thread. The UI thread owns ImGui rendering, keyboard polling while focused, and mouse manipulation. The streaming thread copies synchronized state, serializes once per frame, and sends a full six-device frame at 60 Hz. The UI log shows state-changing sends; unchanged keepalive packets stay quiet.
+The companion UI has a UI thread, a streaming thread, and an optional driver-log listener thread. The UI thread owns ImGui rendering, keyboard polling while focused, and mouse manipulation. The streaming thread copies synchronized state, serializes once per frame, and sends a full six-device frame at 60 Hz. The **Monitor driver commands** switch binds or releases the logging listener at runtime. While bound, accepted and rejected driver reports feed the existing log and successful local-send rows are suppressed. Accepted 60 Hz reports coalesce into 100 ms display windows to keep log rendering bounded.

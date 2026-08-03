@@ -44,6 +44,40 @@ bool GetBoolSetting(const char* key, bool defaultValue) {
     return enabled;
 }
 
+int GetIntSetting(const char* key, int defaultValue) {
+    EVRSettingsError error = VRSettingsError_None;
+    const int value = VRSettings()->GetInt32(anyadance::kDriverSettingsSection, key, &error);
+    if (error != VRSettingsError_None) {
+        DriverLog(
+            "[anyadance] Setting %s.%s not found or invalid; using %d\n",
+            anyadance::kDriverSettingsSection,
+            key,
+            defaultValue);
+        return defaultValue;
+    }
+    return value;
+}
+
+std::string GetStringSetting(const char* key, const char* defaultValue) {
+    char value[256]{};
+    EVRSettingsError error = VRSettingsError_None;
+    VRSettings()->GetString(
+        anyadance::kDriverSettingsSection,
+        key,
+        value,
+        sizeof(value),
+        &error);
+    if (error != VRSettingsError_None || value[0] == '\0') {
+        DriverLog(
+            "[anyadance] Setting %s.%s not found or invalid; using %s\n",
+            anyadance::kDriverSettingsSection,
+            key,
+            defaultValue);
+        return defaultValue;
+    }
+    return value;
+}
+
 bool ShouldRegisterDevice(
     const VirtualDeviceDefinition& definition,
     bool enableHmd,
@@ -108,7 +142,19 @@ EVRInitError ServerDriver::Init(IVRDriverContext* pDriverContext) {
     }
 
     m_poseReceiver = std::make_unique<UdpPoseReceiver>();
-    m_poseReceiver->Start(anyadance::kUdpPort);
+    DriverCommandLogConfig commandLog;
+    commandLog.enabled = GetBoolSetting("command_log_enabled", true);
+    commandLog.host = GetStringSetting("command_log_host", anyadance::kDriverLogHost);
+    const int configuredLogPort = GetIntSetting("command_log_port", anyadance::kDriverLogPort);
+    if (configuredLogPort > 0 && configuredLogPort <= 65535) {
+        commandLog.port = static_cast<unsigned short>(configuredLogPort);
+    } else {
+        DriverLog(
+            "[anyadance] Invalid command-log port %d; using %u\n",
+            configuredLogPort,
+            anyadance::kDriverLogPort);
+    }
+    m_poseReceiver->Start(anyadance::kUdpPort, std::move(commandLog));
 
     return VRInitError_None;
 }

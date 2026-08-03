@@ -138,6 +138,19 @@ Then restart SteamVR (`.\scripts\restart_steamvr.ps1`). `3840x2160` is 4K. Any a
 
 Values set in `steamvr.vrsettings` win over the driver defaults in `resources\settings\default.vrsettings`. The same section also exposes `headset_window_width`, `headset_window_height`, `headset_window_eye_mode`, and `headset_window_preserve_aspect` for the desktop mirror window; see [docs/device-model.md](docs/device-model.md).
 
+The driver also reports processed UDP commands to the UI by default. The
+destination is configurable in the same section:
+
+```json
+"driver_anyadance": {
+    "command_log_enabled": true,
+    "command_log_host": "127.0.0.1",
+    "command_log_port": 39571
+}
+```
+
+The UI's **Monitor driver commands** switch starts or stops its listener immediately. Point the settings at another IPv4 listener to consume the versioned reports elsewhere. See [docs/protocol.md](docs/protocol.md#driver-command-logging) for the packet schema and delivery behavior.
+
 ## Run The Test UI
 
 ```powershell
@@ -149,7 +162,7 @@ The UI:
 - starts 60 Hz UDP streaming automatically
 - continues streaming while minimized or unfocused
 - sends a final neutral-input frame on normal exit
-- keeps the UDP log in English, omits unchanged keepalive packets, and names what each entry was: the key and action that changed (for example `Z left trigger down`), the device that was dragged (for example `Hip manipulated`), or a finger-bend change
+- keeps the UDP log in English and can hot-toggle driver command monitoring; while monitoring is active, driver processing reports show commands from the UI and third-party UDP senders without duplicate successful-send rows
 - shows hover or pinned row detail with three payload actions: Copy (the raw request body), Copy resend command (a runnable PowerShell UDP one-liner), and Resend (replays the exact datagram from the UI over its own socket)
 - can register/unregister its own folder as the SteamVR driver and restart SteamVR (with a confirmation) from its own buttons
 - has an Always on top checkbox that pins the window above other windows; the choice is remembered between runs

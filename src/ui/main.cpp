@@ -118,6 +118,10 @@ void LoadPreferences(HWND hwnd) {
             int value = 0;
             in >> value;
             g_app.alwaysOnTop = value != 0;
+        } else if (key == "monitor_driver_commands") {
+            int value = 1;
+            in >> value;
+            g_app.monitorDriverCommands = value != 0;
         } else if (key == "ui_mode") {
             std::string value;
             in >> value;
@@ -154,6 +158,7 @@ void SavePreferences(HWND hwnd) {
     out << "language " << GetLanguageInfo(CurrentLanguage()).code << '\n';
     out << "disclaimer_accepted " << (g_app.disclaimerAccepted ? 1 : 0) << '\n';
     out << "always_on_top " << (g_app.alwaysOnTop ? 1 : 0) << '\n';
+    out << "monitor_driver_commands " << (g_app.monitorDriverCommands ? 1 : 0) << '\n';
     out << "ui_mode " << UiModeCode(g_app.uiMode) << '\n';
     out << "dance_blender_path " << std::quoted(std::string(g_app.danceBlenderPath)) << '\n';
     out << "dance_mmd_tools_path " << std::quoted(std::string(g_app.danceMmdToolsPath)) << '\n';
@@ -574,6 +579,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     // Do not stream until the disclaimer has been accepted.
     if (g_app.disclaimerAccepted) {
         g_app.streamer.Start(g_app.frame);
+        if (g_app.monitorDriverCommands &&
+            !g_app.streamer.SetDriverLogMonitoring(true)) {
+            g_app.monitorDriverCommands = false;
+        }
     }
 
     bool done = false;
@@ -613,6 +622,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
                 g_app.disclaimerAccepted = true;
                 SavePreferences(hwnd);
                 g_app.streamer.Start(g_app.frame);
+                if (g_app.monitorDriverCommands &&
+                    !g_app.streamer.SetDriverLogMonitoring(true)) {
+                    g_app.monitorDriverCommands = false;
+                }
                 break;
             case DisclaimerAction::Quit:
                 done = true;

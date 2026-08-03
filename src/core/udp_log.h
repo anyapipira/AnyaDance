@@ -11,6 +11,7 @@ struct UdpLogEntry {
     std::string timeText;
     std::string reason;
     std::string result;
+    std::string endpoint;
     std::string payload;
     std::string detail;
 };
@@ -19,6 +20,13 @@ class UdpLog {
 public:
     void Add(std::string reason, std::string result, std::string payload, std::string detail = {});
     void AddManipulation(std::string result, std::string payload, std::string reason = "Device manipulated");
+    void AddDriverCommand(
+        std::string reason,
+        std::string result,
+        std::string endpoint,
+        std::string payload,
+        std::string detail,
+        bool accepted);
     const std::deque<UdpLogEntry>& Entries() const { return m_entries; }
     void Clear();
 
@@ -28,6 +36,7 @@ private:
 
     std::deque<UdpLogEntry> m_entries;
     std::chrono::steady_clock::time_point m_lastManipulationLog{};
+    std::chrono::steady_clock::time_point m_lastDriverCommandLog{};
     static constexpr std::size_t kCapacity = 1000;
 };
 

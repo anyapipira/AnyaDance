@@ -83,7 +83,7 @@ Dragging the empty area of the panel drives the right controller thumbstick: the
 
 ## Tool Log
 
-The companion UI keeps the UDP log in English regardless of selected UI language. **Monitor driver commands** listens for the driver's processing reports on `127.0.0.1:39571` and can be toggled while the UI is running. Driver reports show the original sender endpoint, accepted or rejected result, processing detail, and raw command JSON. While monitoring is active, those reports provide successful command rows and the UI suppresses its own successful-send rows. Hovering any part of a log row shows the JSON. Clicking a row highlights it and opens a pinned detail window with a scrollable JSON view; clicking the highlighted row again closes the detail window.
+The companion UI keeps the UDP log in English regardless of selected UI language. **Monitor driver commands** joins the loopback multicast group `239.255.39.71:39571` for the driver's processing reports and can be toggled while the UI is running. Other local processes may join the same group simultaneously. Driver reports show the original sender endpoint, accepted or rejected result, processing detail, and raw command JSON. While monitoring is active, those reports provide successful command rows and the UI suppresses its own successful-send rows. Hovering any part of a log row shows the JSON. Clicking a row highlights it and opens a pinned detail window with a scrollable JSON view; clicking the highlighted row again closes the detail window.
 
 ## Localization
 

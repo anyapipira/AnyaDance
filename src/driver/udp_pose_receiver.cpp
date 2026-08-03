@@ -44,16 +44,60 @@ public:
 
         m_destination.sin_family = AF_INET;
         m_destination.sin_port = htons(config.port);
-        if (InetPtonA(AF_INET, config.host.c_str(), &m_destination.sin_addr) != 1) {
-            DriverLog("[anyadance] Invalid command-log IPv4 address: %s\n", config.host.c_str());
+        if (InetPtonA(
+                AF_INET,
+                config.multicastGroup.c_str(),
+                &m_destination.sin_addr) != 1 ||
+            (ntohl(m_destination.sin_addr.s_addr) & 0xf0000000u) != 0xe0000000u) {
+            DriverLog(
+                "[anyadance] Invalid command-log IPv4 multicast group: %s\n",
+                config.multicastGroup.c_str());
+            closesocket(m_socket);
+            m_socket = INVALID_SOCKET;
+            return false;
+        }
+
+        in_addr loopbackInterface{};
+        if (InetPtonA(
+                AF_INET,
+                anyadance::kDriverLogMulticastInterface,
+                &loopbackInterface) != 1) {
+            DriverLog("[anyadance] Invalid command-log multicast interface\n");
+            closesocket(m_socket);
+            m_socket = INVALID_SOCKET;
+            return false;
+        }
+        if (setsockopt(
+                m_socket,
+                IPPROTO_IP,
+                IP_MULTICAST_IF,
+                reinterpret_cast<const char*>(&loopbackInterface),
+                sizeof(loopbackInterface)) == SOCKET_ERROR) {
+            DriverLog("[anyadance] Failed to select loopback for command-log multicast\n");
+            closesocket(m_socket);
+            m_socket = INVALID_SOCKET;
+            return false;
+        }
+
+        // Scope zero and an explicit loopback interface keep command telemetry
+        // on this machine while allowing every joined process to receive it.
+        const DWORD multicastTtl = 0;
+        if (setsockopt(
+                m_socket,
+                IPPROTO_IP,
+                IP_MULTICAST_TTL,
+                reinterpret_cast<const char*>(&multicastTtl),
+                sizeof(multicastTtl)) == SOCKET_ERROR) {
+            DriverLog("[anyadance] Failed to scope command-log multicast to this host\n");
             closesocket(m_socket);
             m_socket = INVALID_SOCKET;
             return false;
         }
 
         DriverLog(
-            "[anyadance] Command logging sends to %s:%u (best-effort, non-blocking)\n",
-            config.host.c_str(),
+            "[anyadance] Command logging multicasts on loopback to %s:%u "
+            "(best-effort, non-blocking)\n",
+            config.multicastGroup.c_str(),
             config.port);
         return true;
     }

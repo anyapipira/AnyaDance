@@ -137,17 +137,17 @@ ctest --test-dir build -C Release --output-on-failure
 
 在 `steamvr.vrsettings` 中设置的值会覆盖驱动默认值（`resources\settings\default.vrsettings`）。同一小节还提供 `headset_window_width`、`headset_window_height`、`headset_window_eye_mode` 与 `headset_window_preserve_aspect`，用于配置桌面镜像窗口；详见 [docs/device-model.zh-CN.md](docs/device-model.zh-CN.md)。
 
-驱动默认还会向 UI 报告已处理的 UDP 命令。可在同一小节中配置目标端点：
+驱动默认还会通过仅限回环的多播组报告已处理的 UDP 命令。可在同一小节中配置多播组与端口：
 
 ```json
 "driver_anyadance": {
     "command_log_enabled": true,
-    "command_log_host": "127.0.0.1",
+    "command_log_multicast_group": "239.255.39.71",
     "command_log_port": 39571
 }
 ```
 
-UI 中的 **监视驱动命令** 开关会立即启动或停止监听器。把设置指向其他 IPv4 监听器即可在别处接收带版本号的报告。数据包结构与传递行为见 [docs/protocol.zh-CN.md](docs/protocol.zh-CN.md#驱动命令日志)。
+UI 中的 **监视驱动命令** 开关会立即加入或离开默认多播组。多个本机应用可同时订阅。运行 `.\scripts\listen_driver_log.ps1` 可启动参考监听器；添加 `-Validate -ListenerCount 3` 可验证三个独立接收进程。数据包结构与传递行为见 [docs/protocol.zh-CN.md](docs/protocol.zh-CN.md#驱动命令日志)。
 
 ## 运行测试界面
 

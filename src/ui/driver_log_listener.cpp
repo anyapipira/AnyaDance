@@ -13,7 +13,7 @@ constexpr int kReceiveTimeoutMs = 50;
 }
 
 bool DriverLogListener::Start(
-    const char* host,
+    const char* multicastGroup,
     unsigned short port,
     Callback callback,
     std::string& error) {
@@ -39,20 +39,77 @@ bool DriverLogListener::Start(
         return false;
     }
 
-    sockaddr_in address{};
-    address.sin_family = AF_INET;
-    address.sin_port = htons(port);
-    if (InetPtonA(AF_INET, host, &address.sin_addr) != 1) {
-        error = "invalid listener IPv4 address";
+    in_addr groupAddress{};
+    if (InetPtonA(AF_INET, multicastGroup, &groupAddress) != 1 ||
+        (ntohl(groupAddress.s_addr) & 0xf0000000u) != 0xe0000000u) {
+        error = "invalid IPv4 multicast group";
         closesocket(socketHandle);
         WSACleanup();
         return false;
     }
+
+    const BOOL reuseAddress = TRUE;
+    if (setsockopt(
+            socketHandle,
+            SOL_SOCKET,
+            SO_REUSEADDR,
+            reinterpret_cast<const char*>(&reuseAddress),
+            sizeof(reuseAddress)) == SOCKET_ERROR) {
+        error = "SO_REUSEADDR failed: WSA error " + std::to_string(WSAGetLastError());
+        closesocket(socketHandle);
+        WSACleanup();
+        return false;
+    }
+
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_port = htons(port);
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
     if (bind(
             socketHandle,
             reinterpret_cast<const sockaddr*>(&address),
             sizeof(address)) == SOCKET_ERROR) {
         error = "bind() failed: WSA error " + std::to_string(WSAGetLastError());
+        closesocket(socketHandle);
+        WSACleanup();
+        return false;
+    }
+
+    ip_mreq membership{};
+    membership.imr_multiaddr = groupAddress;
+    if (InetPtonA(
+            AF_INET,
+            kDriverLogMulticastInterface,
+            &membership.imr_interface) != 1) {
+        error = "invalid multicast interface";
+        closesocket(socketHandle);
+        WSACleanup();
+        return false;
+    }
+    if (setsockopt(
+            socketHandle,
+            IPPROTO_IP,
+            IP_ADD_MEMBERSHIP,
+            reinterpret_cast<const char*>(&membership),
+            sizeof(membership)) == SOCKET_ERROR) {
+        error = "IP_ADD_MEMBERSHIP failed: WSA error " +
+            std::to_string(WSAGetLastError());
+        closesocket(socketHandle);
+        WSACleanup();
+        return false;
+    }
+
+    // Winsock applies IP_MULTICAST_LOOP on the receive path. Keep it explicit
+    // so this listener receives datagrams emitted by the local driver.
+    const DWORD receiveLocalMulticast = 1;
+    if (setsockopt(
+            socketHandle,
+            IPPROTO_IP,
+            IP_MULTICAST_LOOP,
+            reinterpret_cast<const char*>(&receiveLocalMulticast),
+            sizeof(receiveLocalMulticast)) == SOCKET_ERROR) {
+        error = "IP_MULTICAST_LOOP failed: WSA error " +
+            std::to_string(WSAGetLastError());
         closesocket(socketHandle);
         WSACleanup();
         return false;

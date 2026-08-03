@@ -96,9 +96,10 @@ a root turns off fetching for that dependency.
   row-per-string table in `src/ui/localization.*`; access with `Tr(Text::...)`.
   Adding a string is one enum value plus one table row (a `static_assert` guards
   the row count).
-- Driver command reports use logging protocol version 1 and default to
-  `127.0.0.1:39571`. Reporting is best-effort and non-blocking. When the UI owns
-  that listener, driver reports are the source of truth for successful commands;
+- Driver command reports use logging protocol version 1 and default to the
+  loopback-only multicast group `239.255.39.71:39571`. Reporting is best-effort
+  and non-blocking. When the UI joins that group, driver reports are the source
+  of truth for successful commands;
   keep UI-side successful-send rows suppressed to avoid duplicates.
 - Add focused tests in the relevant `tests/test_*.cpp` file for protocol,
   safety, freshness, T-pose, input, manipulation, and log behavior. Update

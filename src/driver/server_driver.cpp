@@ -144,7 +144,9 @@ EVRInitError ServerDriver::Init(IVRDriverContext* pDriverContext) {
     m_poseReceiver = std::make_unique<UdpPoseReceiver>();
     DriverCommandLogConfig commandLog;
     commandLog.enabled = GetBoolSetting("command_log_enabled", true);
-    commandLog.host = GetStringSetting("command_log_host", anyadance::kDriverLogHost);
+    commandLog.multicastGroup = GetStringSetting(
+        "command_log_multicast_group",
+        anyadance::kDriverLogMulticastGroup);
     const int configuredLogPort = GetIntSetting("command_log_port", anyadance::kDriverLogPort);
     if (configuredLogPort > 0 && configuredLogPort <= 65535) {
         commandLog.port = static_cast<unsigned short>(configuredLogPort);

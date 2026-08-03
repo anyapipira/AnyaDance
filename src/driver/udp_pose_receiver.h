@@ -12,7 +12,7 @@
 
 struct DriverCommandLogConfig {
     bool enabled = true;
-    std::string host = anyadance::kDriverLogHost;
+    std::string multicastGroup = anyadance::kDriverLogMulticastGroup;
     unsigned short port = anyadance::kDriverLogPort;
 };
 

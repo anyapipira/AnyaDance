@@ -196,7 +196,7 @@ public:
 
         std::string error;
         const bool started = m_driverLogListener.Start(
-            kDriverLogHost,
+            kDriverLogMulticastGroup,
             kDriverLogPort,
             [this](DriverCommandLogPacket packet) {
                 const std::string endpoint = packet.senderHost + ":" +

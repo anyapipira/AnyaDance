@@ -23,7 +23,11 @@ public:
     DriverLogListener& operator=(const DriverLogListener&) = delete;
 
     DriverLogListener() = default;
-    bool Start(const char* host, unsigned short port, Callback callback, std::string& error);
+    bool Start(
+        const char* multicastGroup,
+        unsigned short port,
+        Callback callback,
+        std::string& error);
     void Stop();
     bool IsRunning() const { return m_running.load(); }
 

@@ -178,6 +178,7 @@ if(ANYADANCE_BUILD_UI)
             "${ANYADANCE_OUTPUT_DRIVER_ROOT}/scripts/blender_export_mmd.py"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/scripts/common_steamvr.ps1"
+            "${CMAKE_CURRENT_SOURCE_DIR}/scripts/listen_driver_log.ps1"
             "${CMAKE_CURRENT_SOURCE_DIR}/scripts/unregister_driver.ps1"
             "${CMAKE_CURRENT_SOURCE_DIR}/scripts/restart_steamvr.ps1"
             "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.ps1"

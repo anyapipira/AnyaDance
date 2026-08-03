@@ -138,18 +138,18 @@ Then restart SteamVR (`.\scripts\restart_steamvr.ps1`). `3840x2160` is 4K. Any a
 
 Values set in `steamvr.vrsettings` win over the driver defaults in `resources\settings\default.vrsettings`. The same section also exposes `headset_window_width`, `headset_window_height`, `headset_window_eye_mode`, and `headset_window_preserve_aspect` for the desktop mirror window; see [docs/device-model.md](docs/device-model.md).
 
-The driver also reports processed UDP commands to the UI by default. The
-destination is configurable in the same section:
+The driver also reports processed UDP commands over a loopback-only multicast
+group by default. The group and port are configurable in the same section:
 
 ```json
 "driver_anyadance": {
     "command_log_enabled": true,
-    "command_log_host": "127.0.0.1",
+    "command_log_multicast_group": "239.255.39.71",
     "command_log_port": 39571
 }
 ```
 
-The UI's **Monitor driver commands** switch starts or stops its listener immediately. Point the settings at another IPv4 listener to consume the versioned reports elsewhere. See [docs/protocol.md](docs/protocol.md#driver-command-logging) for the packet schema and delivery behavior.
+The UI's **Monitor driver commands** switch joins or leaves the default group immediately. Multiple local applications can subscribe simultaneously. Run `.\scripts\listen_driver_log.ps1` for a reference listener, or add `-Validate -ListenerCount 3` to verify three independent receiver processes. See [docs/protocol.md](docs/protocol.md#driver-command-logging) for the packet schema and delivery behavior.
 
 ## Run The Test UI
 

@@ -18,33 +18,54 @@ The driver binds to loopback only. Senders treat `sendto` success as local socke
 ## Driver Command Logging
 
 The driver emits a best-effort telemetry datagram after processing each pose
-datagram that fits its receive buffer. The default destination is the companion
-UI's loopback listener:
+datagram that fits its receive buffer. It sends one datagram to a local IPv4
+multicast group, so the companion UI and multiple independent application
+processes can receive the same report:
 
 ```text
 UDP
-127.0.0.1:39571
+multicast group: 239.255.39.71
+port: 39571
+interface: 127.0.0.1 (loopback only)
 UTF-8 JSON
 logging version: 1
 maximum logging datagram size: 65507 bytes
 ```
 
-The logging destination is independent of the command receiver. Configure it in
+The logging group is independent of the command receiver. Configure it in
 the `driver_anyadance` section of `steamvr.vrsettings` and restart SteamVR to
 apply a change:
 
 ```json
 "driver_anyadance": {
     "command_log_enabled": true,
-    "command_log_host": "127.0.0.1",
+    "command_log_multicast_group": "239.255.39.71",
     "command_log_port": 39571
 }
 ```
 
-`command_log_host` accepts an IPv4 address. Point it at another listener to
-consume driver reports outside the companion UI. `command_log_enabled` controls
+`command_log_multicast_group` must be an IPv4 multicast address. Every local
+subscriber joins that group and port independently; changing the group lets a
+separate set of listeners consume the reports. `command_log_enabled` controls
 report generation. These values default to the entries shipped in
-`resources/settings/default.vrsettings`.
+`resources/settings/default.vrsettings`. The driver always selects the loopback
+interface and multicast TTL 0, so reports do not leave the machine.
+
+On Windows, each subscriber must enable `SO_REUSEADDR` before binding, bind UDP
+port `39571` on `0.0.0.0`, and join `239.255.39.71` on the `127.0.0.1`
+interface. Multiple processes following those steps each receive a copy of a
+report, subject to normal UDP loss, duplication, and reordering.
+
+The included PowerShell listener is a working reference implementation:
+
+```powershell
+# Monitor reports until Ctrl+C.
+.\scripts\listen_driver_log.ps1
+
+# Launch three independent listener processes and require every one to receive
+# the same locally generated multicast probe.
+.\scripts\listen_driver_log.ps1 -Validate -ListenerCount 3
+```
 
 Each packet uses this shape:
 
@@ -84,13 +105,13 @@ Each packet uses this shape:
 | `detail` | Compact English processing summary. |
 
 The report socket is non-blocking and telemetry delivery is intentionally
-lossy. A full socket buffer, unavailable listener, invalid logging endpoint, or
-network delivery failure drops the report while command processing continues.
-Serialization and sending run on the UDP receiver thread, outside SteamVR's
-`RunFrame` path.
+lossy. A full socket buffer, invalid multicast configuration, or local delivery
+failure drops the report while command processing continues. Serialization and
+sending run on the UDP receiver thread, outside SteamVR's `RunFrame` path. The
+driver sends only once per command regardless of subscriber count.
 
-The UI's **Monitor driver commands** switch hot-starts and hot-stops the default
-listener. While the listener is bound, driver reports are the source of truth
+The UI's **Monitor driver commands** switch joins or leaves the default
+multicast group immediately. While the listener is joined, driver reports are the source of truth
 for successful command rows and the UI suppresses its own successful-send rows.
 Local socket failures remain visible because the driver cannot report a command
 it did not receive. Rapid accepted reports from the same sender are coalesced in

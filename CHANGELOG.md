@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- The driver emits versioned, configurable UDP command-processing reports, and the UI can hot-toggle a listener that feeds those reports into the existing log without duplicate successful-send rows.
+- The driver emits versioned command-processing reports once per command over a configurable, loopback-only UDP multicast group, allowing the UI and multiple external processes to monitor the same events without increasing driver send work. The UI can hot-toggle its listener and avoids duplicate successful-send rows.
 - Unregister Driver updates the configuration immediately; the separate Restart SteamVR button applies the change.
 - The empty body-panel area manipulates the whole rig: middle mouse drag rotates all six devices (yaw/pitch) about the HMD position, middle+right rolls them, and right mouse drag moves the rig vertically within the shared `0–25 m` Y range.
 - A right mouse drag on the HMD box moves the HMD vertically; the left+right chord provides the same gesture.

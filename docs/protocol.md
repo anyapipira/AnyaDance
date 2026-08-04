@@ -57,11 +57,6 @@ report generation. These values default to the entries shipped in
 `resources/settings/default.vrsettings`. The driver always selects the loopback
 interface and multicast TTL 0, so reports do not leave the machine.
 
-On Windows, each subscriber must enable `SO_REUSEADDR` before binding, bind UDP
-port `39571` on `0.0.0.0`, and join `239.255.39.71` on the `127.0.0.1`
-interface. Multiple processes following those steps each receive a copy of a
-report, subject to normal UDP loss, duplication, and reordering.
-
 The included PowerShell listener is a working reference implementation:
 
 ```powershell
@@ -72,6 +67,115 @@ The included PowerShell listener is a working reference implementation:
 # the same locally generated multicast probe.
 .\scripts\listen_driver_log.ps1 -Validate -ListenerCount 3
 ```
+
+## Writing A Receiver
+
+Any local process can subscribe. Nothing needs to be registered with the driver,
+and the companion UI does not need to be running — the driver multicasts whether
+or not anyone is listening, and its **Monitor driver commands** switch only
+controls whether the UI itself joins.
+
+Four socket steps, in this order. Each one is a silent failure if skipped: the
+socket still opens and binds, and no datagram ever arrives.
+
+1. **Create a UDP socket** (`AF_INET`, `SOCK_DGRAM`).
+2. **Set `SO_REUSEADDR` before binding.** Several processes share this port by
+   design. Without it, whichever process starts second either fails to bind or
+   receives nothing.
+3. **Bind port `39571` on `0.0.0.0`**, not on the group address. Binding the
+   multicast address itself works on some platforms and not on Windows.
+4. **Join `239.255.39.71` on the `127.0.0.1` interface** (`IP_ADD_MEMBERSHIP`).
+   The interface matters: the driver sends from loopback with TTL 0, so a
+   membership on any other interface never sees the traffic.
+
+Then read datagrams, decode UTF-8, parse JSON, and filter on `event`. This
+receiver handles both current event types, skips one it does not know, and
+reports loss from the sequence numbering:
+
+```python
+import json
+import socket
+import struct
+
+GROUP = "239.255.39.71"
+PORT = 39571
+INTERFACE = "127.0.0.1"
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+# Before bind: lets other receivers share the port.
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+# Bind the port on any address, not on the group address.
+sock.bind(("", PORT))
+# Join on the loopback interface: the driver sends with TTL 0 from 127.0.0.1.
+sock.setsockopt(
+    socket.IPPROTO_IP,
+    socket.IP_ADD_MEMBERSHIP,
+    struct.pack("=4s4s", socket.inet_aton(GROUP), socket.inet_aton(INTERFACE)),
+)
+
+expected = None
+while True:
+    datagram, _ = sock.recvfrom(65507)
+    try:
+        event = json.loads(datagram.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        continue
+
+    if event.get("version") != 1:
+        continue  # a version this receiver does not know
+
+    sequence = event.get("sequence")
+    if expected is not None and sequence > expected:
+        print(f"  (lost {sequence - expected} event(s))")
+    expected = sequence + 1
+
+    name = event.get("event")
+    if name == "haptic_vibration":
+        haptic = event["haptic"]
+        print(
+            f"#{sequence} haptic {event['device']}: "
+            f"{haptic['duration_seconds']:.3f}s "
+            f"{haptic['frequency_hz']:.1f}Hz "
+            f"amplitude {haptic['amplitude']:.2f}"
+        )
+    elif name == "command_processed":
+        command = event["command"]
+        print(
+            f"#{sequence} command from {event['source']['host']}: "
+            f"{'accepted' if command['accepted'] else 'rejected'} - {event['detail']}"
+        )
+    else:
+        # An event type added after this receiver was written. The envelope is
+        # common to every event, so it is still safe to read and skip.
+        print(f"#{sequence} {name} - {event['detail']}")
+```
+
+That example is deliberately minimal. Before relying on one in production, read
+[Ordering And Delivery](#ordering-and-delivery) and [Schema
+Stability](#schema-stability): a receiver should also place events by `sequence`
+rather than arrival and drop duplicated ones, which the example does not do.
+
+### No datagrams arriving
+
+The socket opening cleanly proves nothing, so work down this list:
+
+- **Is the driver running?** Reports only exist while SteamVR has the driver
+  loaded. Check `driver_anyadance` in the SteamVR web console, or look for the
+  `Command logging multicasts on loopback` line in the SteamVR driver log.
+- **Did you join on `127.0.0.1`?** Joining on the default or a LAN interface is
+  the most common cause of a silent, empty socket.
+- **Did you bind `0.0.0.0` rather than the group address?**
+- **Was `SO_REUSEADDR` set before the bind, not after?**
+- **Is reporting switched off?** `command_log_enabled` and `haptic_log_enabled`
+  in `steamvr.vrsettings` both default to `true`; a change needs a SteamVR
+  restart.
+- **Does the group and port match?** If `command_log_multicast_group` or
+  `command_log_port` was changed, subscribers must follow.
+- **Is the traffic there at all?** Run
+  `.\scripts\listen_driver_log.ps1 -Validate -ListenerCount 3`. It generates its
+  own multicast probe, so it passing means the group works on this machine and
+  the problem is in your receiver; it failing points at the machine's multicast
+  configuration instead.
 
 ## Event Schema
 

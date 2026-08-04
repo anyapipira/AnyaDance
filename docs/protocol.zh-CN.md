@@ -44,8 +44,6 @@ UTF-8 JSON
 
 `command_log_multicast_group` 必须是 IPv4 多播地址。每个本机订阅者独立加入该多播组与端口；修改多播组即可让另一组监听器接收报告。`command_log_enabled` 控制是否生成报告。默认值来自随包提供的 `resources/settings/default.vrsettings`。驱动始终选择回环接口并将多播 TTL 设为 0，因此报告不会离开本机。
 
-在 Windows 上，每个订阅者必须先启用 `SO_REUSEADDR`，再把 UDP 端口 `39571` 绑定到 `0.0.0.0`，然后通过 `127.0.0.1` 接口加入 `239.255.39.71`。遵循这些步骤的多个进程会各自收到报告副本，但仍需接受 UDP 通常存在的丢包、重复和乱序。
-
 随附的 PowerShell 监听器是可运行的参考实现：
 
 ```powershell
@@ -55,6 +53,91 @@ UTF-8 JSON
 # 启动三个独立监听进程，并要求每个进程都收到同一份本机多播探测包。
 .\scripts\listen_driver_log.ps1 -Validate -ListenerCount 3
 ```
+
+## 编写接收端
+
+任何本机进程都可以订阅。无需向驱动注册，伴随 UI 也不必运行——无论是否有人监听，驱动都会进行多播，而 UI 的 **监视驱动命令** 开关只决定 UI 自身是否加入。
+
+套接字设置共四步，且顺序不能变。漏掉其中任何一步都会造成静默失败：套接字照常创建并绑定成功，却永远收不到数据报。
+
+1. **创建 UDP 套接字**（`AF_INET`、`SOCK_DGRAM`）。
+2. **在绑定之前设置 `SO_REUSEADDR`。** 该端口在设计上就要被多个进程共享。若不设置，后启动的进程要么绑定失败，要么什么也收不到。
+3. **将端口 `39571` 绑定到 `0.0.0.0`**，而不是绑定到多播组地址。绑定多播地址本身在某些平台可行，但在 Windows 上不可行。
+4. **通过 `127.0.0.1` 接口加入 `239.255.39.71`**（`IP_ADD_MEMBERSHIP`）。接口的选择很关键：驱动以 TTL 0 从回环地址发送，因此在其他接口上的成员关系永远看不到这些流量。
+
+随后读取数据报、按 UTF-8 解码、解析 JSON，并依据 `event` 过滤。下面这个接收端处理了当前两种事件类型，跳过它不认识的类型，并依据编号报告丢失：
+
+```python
+import json
+import socket
+import struct
+
+GROUP = "239.255.39.71"
+PORT = 39571
+INTERFACE = "127.0.0.1"
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+# 必须在 bind 之前设置：使其他接收端可以共享该端口。
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+# 绑定到任意地址上的该端口，而不是绑定多播组地址。
+sock.bind(("", PORT))
+# 在回环接口上加入：驱动以 TTL 0 从 127.0.0.1 发送。
+sock.setsockopt(
+    socket.IPPROTO_IP,
+    socket.IP_ADD_MEMBERSHIP,
+    struct.pack("=4s4s", socket.inet_aton(GROUP), socket.inet_aton(INTERFACE)),
+)
+
+expected = None
+while True:
+    datagram, _ = sock.recvfrom(65507)
+    try:
+        event = json.loads(datagram.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        continue
+
+    if event.get("version") != 1:
+        continue  # 该接收端不认识的版本
+
+    sequence = event.get("sequence")
+    if expected is not None and sequence > expected:
+        print(f"  (lost {sequence - expected} event(s))")
+    expected = sequence + 1
+
+    name = event.get("event")
+    if name == "haptic_vibration":
+        haptic = event["haptic"]
+        print(
+            f"#{sequence} haptic {event['device']}: "
+            f"{haptic['duration_seconds']:.3f}s "
+            f"{haptic['frequency_hz']:.1f}Hz "
+            f"amplitude {haptic['amplitude']:.2f}"
+        )
+    elif name == "command_processed":
+        command = event["command"]
+        print(
+            f"#{sequence} command from {event['source']['host']}: "
+            f"{'accepted' if command['accepted'] else 'rejected'} - {event['detail']}"
+        )
+    else:
+        # 该接收端编写之后新增的事件类型。信封对所有事件都是共通的，
+        # 因此仍然可以安全地读取并跳过。
+        print(f"#{sequence} {name} - {event['detail']}")
+```
+
+该示例刻意保持精简。在正式使用之前，请阅读[顺序与投递](#顺序与投递)与[结构稳定性](#结构稳定性)：接收端还应当按 `sequence` 而非到达顺序排列事件，并丢弃重复事件——这些示例中并未实现。
+
+### 收不到数据报
+
+套接字成功创建并不说明任何问题，请按以下顺序排查：
+
+- **驱动在运行吗？** 只有 SteamVR 加载了该驱动时才会产生报告。可在 SteamVR 网页控制台查看 `driver_anyadance`，或在 SteamVR 驱动日志中查找 `Command logging multicasts on loopback` 一行。
+- **是否在 `127.0.0.1` 上加入？** 在默认接口或局域网接口上加入，是套接字静默无数据最常见的原因。
+- **是否绑定了 `0.0.0.0` 而不是多播组地址？**
+- **`SO_REUSEADDR` 是在 bind 之前设置的吗，而不是之后？**
+- **上报是否被关闭？** `steamvr.vrsettings` 中的 `command_log_enabled` 与 `haptic_log_enabled` 默认均为 `true`；修改后需要重启 SteamVR。
+- **多播组与端口是否一致？** 如果修改过 `command_log_multicast_group` 或 `command_log_port`，订阅者也必须同步修改。
+- **流量本身存在吗？** 运行 `.\scripts\listen_driver_log.ps1 -Validate -ListenerCount 3`。它会自行生成多播探测包，因此通过即说明本机的多播组工作正常、问题出在你的接收端；未通过则说明问题在本机的多播配置。
 
 ## 事件结构
 

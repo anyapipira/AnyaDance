@@ -101,6 +101,10 @@ a root turns off fetching for that dependency.
   and non-blocking. When the UI joins that group, driver reports are the source
   of truth for successful commands;
   keep UI-side successful-send rows suppressed to avoid duplicates.
+- The driver reports a command only when it differs from the last reported one
+  (`SamePoseCommand`), because a held pose repeats at the stream rate. Keep this
+  a change filter, not a rate limit: every distinct command still goes out, and
+  absorbed repeats are counted in the next report's optional `suppressed` field.
 - Add focused tests in the relevant `tests/test_*.cpp` file for protocol,
   safety, freshness, T-pose, input, manipulation, and log behavior. Update
   `docs/` when behavior changes.

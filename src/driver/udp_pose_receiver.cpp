@@ -8,6 +8,8 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
+#include <cstring>
+#include <string>
 #include <utility>
 
 namespace {
@@ -112,6 +114,15 @@ public:
             return;
         }
 
+        // A sender holding a pose repeats the identical command at its stream
+        // rate. Only a change in what the command asks for is worth reporting;
+        // the number of absorbed repeats rides along on the next report so a
+        // held pose stays distinguishable from a stalled sender.
+        if (IsRepeatOfLast(data, size, accepted, parsed)) {
+            ++m_suppressed;
+            return;
+        }
+
         anyadance::DriverCommandLogPacket packet;
         packet.sequence = ++m_sequence;
         char senderHost[INET_ADDRSTRLEN]{};
@@ -141,6 +152,13 @@ public:
             packet.detail = "invalid pose frame";
         }
 
+        // Remember the reported state before serializing. An oversized report
+        // is dropped below, and re-deriving it for every repeat of the same
+        // command would burn the receive thread to no effect.
+        RememberLast(data, size, accepted, parsed);
+        packet.suppressed = m_suppressed;
+        m_suppressed = 0;
+
         const std::string encoded = anyadance::SerializeDriverCommandLog(packet);
         if (encoded.size() > static_cast<std::size_t>(anyadance::kMaxDriverLogPacketBytes)) {
             return;
@@ -157,9 +175,46 @@ public:
     }
 
 private:
+    bool IsRepeatOfLast(
+        const char* data,
+        int size,
+        bool accepted,
+        const anyadance::ParsedFrame& parsed) const {
+        if (!m_hasLast || accepted != m_lastAccepted) {
+            return false;
+        }
+        // A rejected datagram leaves no trustworthy parsed state, so repeated
+        // rejections are recognized by their bytes instead.
+        if (!accepted) {
+            return m_lastPayload.size() == static_cast<std::size_t>(size) &&
+                std::memcmp(m_lastPayload.data(), data, m_lastPayload.size()) == 0;
+        }
+        return anyadance::SamePoseCommand(parsed, m_lastFrame);
+    }
+
+    void RememberLast(
+        const char* data,
+        int size,
+        bool accepted,
+        const anyadance::ParsedFrame& parsed) {
+        m_hasLast = true;
+        m_lastAccepted = accepted;
+        m_lastFrame = parsed;
+        if (accepted) {
+            m_lastPayload.clear();
+        } else {
+            m_lastPayload.assign(data, static_cast<std::size_t>(size));
+        }
+    }
+
     SOCKET m_socket = INVALID_SOCKET;
     sockaddr_in m_destination{};
     std::uint64_t m_sequence = 0;
+    std::uint64_t m_suppressed = 0;
+    bool m_hasLast = false;
+    bool m_lastAccepted = false;
+    anyadance::ParsedFrame m_lastFrame;
+    std::string m_lastPayload;
 };
 
 bool SlotForDeviceId(const std::string& deviceId, std::size_t& slot) {

@@ -92,15 +92,23 @@ $receiver = {
             try {
                 $event = $text | ConvertFrom-Json -ErrorAction Stop
                 $result = if ($event.command.accepted) { "accepted" } else { "rejected" }
+                # Reports arrive only when a command changes. A non-zero
+                # suppressed count is how many identical commands the driver
+                # absorbed while the previous one was held.
+                $held = ""
+                if ($event.suppressed -gt 0) {
+                    $held = " (held for {0} identical commands)" -f $event.suppressed
+                }
                 Write-Host (
-                    "[{0:HH:mm:ss.fff}] {1} report #{2} from {3}:{4} {5} - {6}" -f
+                    "[{0:HH:mm:ss.fff}] {1} report #{2} from {3}:{4} {5} - {6}{7}" -f
                     [DateTime]::Now,
                     $ListenerName,
                     $event.sequence,
                     $event.source.host,
                     $event.source.port,
                     $result,
-                    $event.detail)
+                    $event.detail,
+                    $held)
                 Write-Host $event.command.payload
             } catch {
                 Write-Warning "Received a non-protocol datagram: $text"
@@ -151,6 +159,7 @@ try {
         version = 1
         event = "command_processed"
         sequence = 0
+        suppressed = 0
         source = @{ host = "127.0.0.1"; port = 0 }
         command = @{
             protocol = "pose_frame"

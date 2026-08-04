@@ -17,8 +17,8 @@ The driver binds to loopback only. Senders treat `sendto` success as local socke
 
 ## Driver Command Logging
 
-The driver emits a best-effort telemetry datagram after processing each pose
-datagram that fits its receive buffer. It sends one datagram to a local IPv4
+The driver emits a best-effort telemetry datagram when a processed pose datagram
+changes what the command asks for. It sends one datagram to a local IPv4
 multicast group, so the companion UI and multiple independent application
 processes can receive the same report:
 
@@ -74,6 +74,7 @@ Each packet uses this shape:
   "version": 1,
   "event": "command_processed",
   "sequence": 42,
+  "suppressed": 613,
   "source": {
     "host": "127.0.0.1",
     "port": 54321
@@ -94,7 +95,8 @@ Each packet uses this shape:
 | --- | --- |
 | `version` | Driver logging protocol version. Version 1 is current. |
 | `event` | Event type; version 1 emits `command_processed`. |
-| `sequence` | Monotonic report number for the current driver receiver lifetime. It restarts at driver startup. |
+| `sequence` | Monotonic report number for the current driver receiver lifetime. It restarts at driver startup. Reports are numbered, not commands, so gaps do not appear when repeats are suppressed. |
+| `suppressed` | Identical commands the driver absorbed between the previous report and this one. `0` means the previous command was not repeated. Optional: a sender that reports every command may omit it, and a reader that omits it treats it as `0`. |
 | `source.host`, `source.port` | Endpoint that sent the original pose datagram to port `39570`. |
 | `command.protocol` | Command protocol name; version 1 uses `pose_frame`. |
 | `command.bytes` | Byte length of the original command datagram. |
@@ -108,7 +110,25 @@ The report socket is non-blocking and telemetry delivery is intentionally
 lossy. A full socket buffer, invalid multicast configuration, or local delivery
 failure drops the report while command processing continues. Serialization and
 sending run on the UDP receiver thread, outside SteamVR's `RunFrame` path. The
-driver sends only once per command regardless of subscriber count.
+driver sends only once per reported command regardless of subscriber count.
+
+### Held Commands
+
+A sender streaming a held pose repeats the identical command at its stream rate,
+so reporting every datagram would emit `kStreamRateHz` reports per second while
+nothing changes. The driver reports a command only when it differs from the last
+one it reported. A command is a repeat when the acceptance outcome, the set of
+recognized device entries, the set of clamped entries, and every present device's
+pose and controller inputs all match. Arrival time is not part of the comparison,
+and the comparison is exact — a held pose is re-serialized from unchanged state
+and arrives identical, while slow deliberate motion still reports every frame.
+Repeated datagrams that fail validation are compared by their bytes instead,
+because a rejected datagram leaves no trustworthy parsed state.
+
+Suppression is a change filter, not a rate limit: distinct commands are always
+reported, so a listener recording a moving sequence receives every frame of it.
+The count of absorbed repeats rides along on the next report's `suppressed`
+field, which keeps a held pose distinguishable from a stalled sender.
 
 The UI's **Monitor driver commands** switch joins or leaves the default
 multicast group immediately. While the listener is joined, driver reports are the source of truth
@@ -116,7 +136,10 @@ for successful command rows and the UI suppresses its own successful-send rows.
 Local socket failures remain visible because the driver cannot report a command
 it did not receive. Rapid accepted reports from the same sender are coalesced in
 100 ms display windows; rejected reports remain individual rows. Coalescing is
-limited to the UI display—the driver emits a report for each processed command.
+limited to the UI display and applies on top of the driver's held-command
+suppression, so a moving pose still produces one row per 100 ms while a held pose
+produces none. A row whose report carried a non-zero `suppressed` count says how
+many identical commands were held before it.
 
 ## Coordinate Expectations
 

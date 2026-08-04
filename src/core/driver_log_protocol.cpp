@@ -118,6 +118,8 @@ std::string SerializeDriverCommandLog(const DriverCommandLogPacket& packet) {
     out += std::to_string(kDriverLogProtocolVersion);
     out += ",\"event\":\"command_processed\",\"sequence\":";
     out += std::to_string(packet.sequence);
+    out += ",\"suppressed\":";
+    out += std::to_string(packet.suppressed);
     out += ",\"source\":{\"host\":";
     AppendEscaped(out, packet.senderHost);
     out += ",\"port\":";
@@ -154,6 +156,15 @@ bool ParseDriverCommandLog(std::string_view text, DriverCommandLogPacket& packet
     if (!version || version->number != kDriverLogProtocolVersion || !event ||
         event->string != "command_processed" || !sequence || !source ||
         !command || !detail || !ParseNonNegativeInteger(*sequence, packet.sequence)) {
+        packet = {};
+        return false;
+    }
+
+    // Optional so a version 1 sender that predates hold suppression still
+    // parses; absent means the sender reported every command it processed.
+    const json::Value* suppressed = root->Find("suppressed");
+    if (suppressed && !ParseNonNegativeInteger(*suppressed, packet.suppressed)) {
+        packet = {};
         return false;
     }
 

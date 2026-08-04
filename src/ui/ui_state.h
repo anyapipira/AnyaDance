@@ -206,6 +206,12 @@ public:
                     detail += "; ";
                 }
                 detail += "driver report #" + std::to_string(packet.sequence);
+                // The driver reports only when a command changes, so this says
+                // how long the previous pose was held before this one arrived.
+                if (packet.suppressed > 0) {
+                    detail += "; " + std::to_string(packet.suppressed) +
+                        " identical commands held before this one";
+                }
                 std::lock_guard<std::mutex> logLock(m_logMutex);
                 m_log.AddDriverCommand(
                     packet.accepted ? "Pose frame processed" : "Pose frame rejected",

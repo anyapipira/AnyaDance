@@ -18,6 +18,11 @@ struct ParsedFrame {
 
 bool ParsePoseFrame(std::string_view json, ParsedFrame& frame);
 bool ParsePoseFrameBytes(const char* data, int size, ParsedFrame& frame);
+// True when two accepted frames ask the devices for the same thing. Senders
+// stream a held pose at the frame rate, so consecutive frames are commonly
+// identical; comparing the commanded state lets a consumer collapse them.
+// Arrival time is not part of the comparison.
+bool SamePoseCommand(const ParsedFrame& a, const ParsedFrame& b);
 std::string SerializeFrame(const FrameState& frame);
 std::string PrettyPrintJson(std::string_view compactJson);
 

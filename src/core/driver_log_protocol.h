@@ -13,6 +13,9 @@ namespace anyadance {
 // command. The original command remains available for inspection and resend.
 struct DriverCommandLogPacket {
     std::uint64_t sequence = 0;
+    // Identical commands the driver absorbed between the previous report and
+    // this one. Non-zero means a pose was held rather than the stream stalling.
+    std::uint64_t suppressed = 0;
     std::string senderHost;
     unsigned short senderPort = 0;
     int receivedBytes = 0;

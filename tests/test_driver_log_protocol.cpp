@@ -10,6 +10,7 @@ namespace anyadance::tests {
 void TestDriverLogProtocol() {
     DriverCommandLogPacket source;
     source.sequence = 42;
+    source.suppressed = 613;
     source.senderHost = "127.0.0.1";
     source.senderPort = 54321;
     source.accepted = true;
@@ -24,6 +25,7 @@ void TestDriverLogProtocol() {
     DriverCommandLogPacket parsed;
     EXPECT_TRUE(ParseDriverCommandLog(encoded, parsed));
     EXPECT_TRUE(parsed.sequence == 42);
+    EXPECT_TRUE(parsed.suppressed == 613);
     EXPECT_TRUE(parsed.senderHost == "127.0.0.1");
     EXPECT_TRUE(parsed.senderPort == 54321);
     EXPECT_TRUE(parsed.accepted);
@@ -43,6 +45,30 @@ void TestDriverLogProtocol() {
         std::string("command_processed").size(),
         "unknown_event");
     EXPECT_FALSE(ParseDriverCommandLog(wrongEvent, parsed));
+
+    // "suppressed" is optional so a sender that reports every command still
+    // parses, but a present value must be a non-negative integer.
+    std::string withoutSuppressed = encoded;
+    withoutSuppressed.replace(
+        withoutSuppressed.find(",\"suppressed\":613"),
+        std::string(",\"suppressed\":613").size(),
+        "");
+    EXPECT_TRUE(ParseDriverCommandLog(withoutSuppressed, parsed));
+    EXPECT_TRUE(parsed.suppressed == 0);
+
+    std::string negativeSuppressed = encoded;
+    negativeSuppressed.replace(
+        negativeSuppressed.find("\"suppressed\":613"),
+        std::string("\"suppressed\":613").size(),
+        "\"suppressed\":-1");
+    EXPECT_FALSE(ParseDriverCommandLog(negativeSuppressed, parsed));
+
+    std::string nonNumericSuppressed = encoded;
+    nonNumericSuppressed.replace(
+        nonNumericSuppressed.find("\"suppressed\":613"),
+        std::string("\"suppressed\":613").size(),
+        "\"suppressed\":\"3\"");
+    EXPECT_FALSE(ParseDriverCommandLog(nonNumericSuppressed, parsed));
 
     const std::string malformed =
         "{\"version\":1,\"event\":\"command_processed\"}";

@@ -33,6 +33,19 @@ $receiver = {
         [int]$ReceiveTimeoutSeconds
     )
 
+    # When the driver emitted the event, not when this process dequeued it. A
+    # sender that supplies no reading falls back to arrival time so the line is
+    # still dated rather than showing 1970.
+    function Get-EventTime {
+        param($Event)
+        if ($Event.PSObject.Properties.Name -contains "timestamp_ms" -and
+            $Event.timestamp_ms -gt 0) {
+            return [DateTimeOffset]::FromUnixTimeMilliseconds(
+                [long]$Event.timestamp_ms).ToLocalTime().DateTime
+        }
+        return [DateTime]::Now
+    }
+
     $client = [System.Net.Sockets.UdpClient]::new(
         [System.Net.Sockets.AddressFamily]::InterNetwork)
     try {
@@ -93,20 +106,20 @@ $receiver = {
                 $event = $text | ConvertFrom-Json -ErrorAction Stop
 
                 # Filter on the event name. Every event carries the same envelope
-                # (version, event, sequence, suppressed, detail), so an event this
+                # (version, event, sequence, timestamp_ms, suppressed, detail), so an event this
                 # script does not know is still worth showing rather than warning
                 # about -- the group is designed to grow new event types.
                 if ($event.event -ne "command_processed" -and $event.event -ne "haptic_vibration") {
                     Write-Host (
                         "[{0:HH:mm:ss.fff}] {1} {2} #{3} - {4}" -f
-                        [DateTime]::Now, $ListenerName, $event.event, $event.sequence, $event.detail)
+                        (Get-EventTime $event), $ListenerName, $event.event, $event.sequence, $event.detail)
                     continue
                 }
 
                 if ($event.event -eq "haptic_vibration") {
                     Write-Host (
                         "[{0:HH:mm:ss.fff}] {1} haptic #{2} {3} - {4}" -f
-                        [DateTime]::Now,
+                        (Get-EventTime $event),
                         $ListenerName,
                         $event.sequence,
                         $event.device,
@@ -123,7 +136,7 @@ $receiver = {
                 }
                 Write-Host (
                     "[{0:HH:mm:ss.fff}] {1} report #{2} from {3}:{4} {5} - {6}{7}" -f
-                    [DateTime]::Now,
+                    (Get-EventTime $event),
                     $ListenerName,
                     $event.sequence,
                     $event.source.host,
@@ -181,6 +194,7 @@ try {
         version = 1
         event = "command_processed"
         sequence = 0
+        timestamp_ms = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
         suppressed = 0
         source = @{ host = "127.0.0.1"; port = 0 }
         command = @{

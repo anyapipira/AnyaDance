@@ -93,6 +93,7 @@ receiver handles both current event types, skips one it does not know, and
 reports loss from the sequence numbering:
 
 ```python
+import datetime
 import json
 import socket
 import struct
@@ -129,11 +130,21 @@ while True:
         print(f"  (lost {sequence - expected} event(s))")
     expected = sequence + 1
 
+    # Driver wall clock. Absent from a sender predating the field.
+    stamp = event.get("timestamp_ms")
+    when = (
+        datetime.datetime.fromtimestamp(stamp / 1000, datetime.timezone.utc)
+        .astimezone()
+        .strftime("%H:%M:%S.%f")[:-3]
+        if stamp
+        else "--:--:--.---"
+    )
+
     name = event.get("event")
     if name == "haptic_vibration":
         haptic = event["haptic"]
         print(
-            f"#{sequence} haptic {event['device']}: "
+            f"{when} #{sequence} haptic {event['device']}: "
             f"{haptic['duration_seconds']:.3f}s "
             f"{haptic['frequency_hz']:.1f}Hz "
             f"amplitude {haptic['amplitude']:.2f}"
@@ -141,13 +152,13 @@ while True:
     elif name == "command_processed":
         command = event["command"]
         print(
-            f"#{sequence} command from {event['source']['host']}: "
+            f"{when} #{sequence} command from {event['source']['host']}: "
             f"{'accepted' if command['accepted'] else 'rejected'} - {event['detail']}"
         )
     else:
         # An event type added after this receiver was written. The envelope is
         # common to every event, so it is still safe to read and skip.
-        print(f"#{sequence} {name} - {event['detail']}")
+        print(f"{when} #{sequence} {name} - {event['detail']}")
 ```
 
 That example is deliberately minimal. Before relying on one in production, read
@@ -188,6 +199,7 @@ event — including one it does not recognize — without knowing its shape:
   "version": 1,
   "event": "<event name>",
   "sequence": 42,
+  "timestamp_ms": 1700000000123,
   "suppressed": 0,
   "detail": "compact English summary"
 }
@@ -198,6 +210,7 @@ event — including one it does not recognize — without knowing its shape:
 | `version` | Number | Driver logging protocol version. Version 1 is current. An event whose `version` a receiver does not know must be ignored. |
 | `event` | String | **The field to filter on.** Names the event type and therefore the shape of the type-specific fields alongside the envelope. |
 | `sequence` | Number | Monotonic across *every* event the driver emits, not per event type, so events of all types share one order. Restarts at driver startup. A gap means a datagram was lost, or an event type was filtered out upstream. |
+| `timestamp_ms` | Number | When the driver emitted the event: milliseconds since the Unix epoch, UTC. Taken from the wall clock alongside `sequence`, so it reflects when the event happened rather than when the datagram arrived. **Says "when", never "in what order"** — see below. Optional; absent means the sender supplied none. |
 | `suppressed` | Number | Identical events absorbed between the previous report *of the same type* and this one. Optional; absent means `0`. Event types that never suppress always report `0`. |
 | `detail` | String | Compact English summary of the event, always present, so a receiver can render any event as one line without decoding its type-specific fields. Human-readable only — never parse it. |
 
@@ -233,6 +246,11 @@ A receiver is therefore expected to order by `sequence`, not by arrival:
   counter is global, a gap is visible even to a receiver that filters for one
   event type — the numbers it keeps are simply sparse. Distinguish that from
   loss by tracking which numbers you filtered out yourself.
+- **Do not order by `timestamp_ms` either.** It is a wall-clock reading, so it
+  can step backwards across an NTP correction, a manual clock change, or a VM
+  resume, and two events can land in the same millisecond. Use it to report
+  *when* something happened and to measure intervals; use `sequence` to order,
+  deduplicate, and detect loss. Where the two disagree, `sequence` is right.
 - **Do not order by arrival time or by `detail`.** Only `sequence` reflects the
   order the driver produced the events in.
 

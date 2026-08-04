@@ -68,6 +68,7 @@ UTF-8 JSON
 随后读取数据报、按 UTF-8 解码、解析 JSON，并依据 `event` 过滤。下面这个接收端处理了当前两种事件类型，跳过它不认识的类型，并依据编号报告丢失：
 
 ```python
+import datetime
 import json
 import socket
 import struct
@@ -104,11 +105,21 @@ while True:
         print(f"  (lost {sequence - expected} event(s))")
     expected = sequence + 1
 
+    # 驱动侧挂钟时间。早于该字段的发送端不会提供它。
+    stamp = event.get("timestamp_ms")
+    when = (
+        datetime.datetime.fromtimestamp(stamp / 1000, datetime.timezone.utc)
+        .astimezone()
+        .strftime("%H:%M:%S.%f")[:-3]
+        if stamp
+        else "--:--:--.---"
+    )
+
     name = event.get("event")
     if name == "haptic_vibration":
         haptic = event["haptic"]
         print(
-            f"#{sequence} haptic {event['device']}: "
+            f"{when} #{sequence} haptic {event['device']}: "
             f"{haptic['duration_seconds']:.3f}s "
             f"{haptic['frequency_hz']:.1f}Hz "
             f"amplitude {haptic['amplitude']:.2f}"
@@ -116,13 +127,13 @@ while True:
     elif name == "command_processed":
         command = event["command"]
         print(
-            f"#{sequence} command from {event['source']['host']}: "
+            f"{when} #{sequence} command from {event['source']['host']}: "
             f"{'accepted' if command['accepted'] else 'rejected'} - {event['detail']}"
         )
     else:
         # 该接收端编写之后新增的事件类型。信封对所有事件都是共通的，
         # 因此仍然可以安全地读取并跳过。
-        print(f"#{sequence} {name} - {event['detail']}")
+        print(f"{when} #{sequence} {name} - {event['detail']}")
 ```
 
 该示例刻意保持精简。在正式使用之前，请阅读[顺序与投递](#顺序与投递)与[结构稳定性](#结构稳定性)：接收端还应当按 `sequence` 而非到达顺序排列事件，并丢弃重复事件——这些示例中并未实现。
@@ -148,6 +159,7 @@ while True:
   "version": 1,
   "event": "<事件名称>",
   "sequence": 42,
+  "timestamp_ms": 1700000000123,
   "suppressed": 0,
   "detail": "compact English summary"
 }
@@ -158,6 +170,7 @@ while True:
 | `version` | 数字 | 驱动日志协议版本；当前为版本 1。接收端遇到不认识的 `version` 时必须忽略该事件。 |
 | `event` | 字符串 | **用于过滤的字段。** 标识事件类型，并据此决定信封之外那些类型专属字段的形状。 |
 | `sequence` | 数字 | 在驱动发出的*所有*事件之间单调递增，而非按事件类型分别计数，因此各类型事件共享同一顺序。驱动启动时重新计数。出现断档意味着数据报丢失，或某类事件在上游被过滤掉。 |
+| `timestamp_ms` | 数字 | 驱动发出该事件的时刻：自 Unix 纪元起的毫秒数，UTC。与 `sequence` 同时取自挂钟，因此它反映事件发生的时刻，而非数据报到达的时刻。**它回答"何时"，而绝不回答"以何种顺序"**——参见下文。该字段可选，缺失表示发送端未提供。 |
 | `suppressed` | 数字 | 在*同类型*的上一份报告与本报告之间被吸收掉的相同事件数量。该字段可选，缺失时按 `0` 处理。从不抑制重复的事件类型始终上报 `0`。 |
 | `detail` | 字符串 | 该事件的简洁英文摘要，始终存在，使接收端无需解析类型专属字段即可将任意事件渲染为一行。仅供人阅读——请勿解析。 |
 
@@ -179,6 +192,7 @@ while True:
 - **重排序。** 按 `sequence` 缓冲或插入，而不是到达即追加。实际情况下迟到的事件只落后几个位置，因此有界窗口就足够；伴随 UI 最多向前回溯 64 行。
 - **去重。** 重复出现的 `sequence` 是重复的数据报，而非新事件，应当丢弃。
 - **检测丢失。** 缺失的 `sequence` 意味着数据报被丢弃。由于计数是全局的，即使接收端只过滤某一种事件类型也能看到断档——它保留的编号只是稀疏的。请通过记录自己过滤掉了哪些编号来与真正的丢失相区分。
+- **同样不要按 `timestamp_ms` 排序。** 它是挂钟读数，会因 NTP 校正、手动改动系统时间或虚拟机恢复而向后跳变，且两个事件可能落在同一毫秒内。请用它来说明事件发生的*时刻*以及测量时间间隔；用 `sequence` 来排序、去重与检测丢失。两者不一致时，以 `sequence` 为准。
 - **不要按到达时间或 `detail` 排序。** 只有 `sequence` 反映驱动产生事件的先后顺序。
 
 不会重传，也不会读取任何确认，因此丢失的事件就是丢了。这是遥测数据：其设计目标是在压力下被丢弃，而不是拖慢驱动。
@@ -205,6 +219,7 @@ while True:
   "version": 1,
   "event": "command_processed",
   "sequence": 42,
+  "timestamp_ms": 1700000000123,
   "suppressed": 613,
   "detail": "accepted 2 device entries; clamped Y for 1",
   "source": {
@@ -255,6 +270,7 @@ UI 中的 **监视驱动命令** 开关默认关闭，其状态记录在 `%LOCAL
   "version": 1,
   "event": "haptic_vibration",
   "sequence": 7,
+  "timestamp_ms": 1700000000456,
   "suppressed": 0,
   "detail": "0.125 s at 160.5 Hz, amplitude 0.75",
   "device": "right_controller",

@@ -225,7 +225,8 @@ public:
                     std::move(packet.payload),
                     std::move(detail),
                     packet.accepted,
-                    packet.envelope.sequence);
+                    packet.envelope.sequence,
+                    packet.envelope.timestampMs);
             },
             error);
         if (!started) {
@@ -257,7 +258,8 @@ public:
             kDevices[DeviceSlot(haptic.device)].id,
             {},
             std::move(detail),
-            haptic.envelope.sequence);
+            haptic.envelope.sequence,
+            haptic.envelope.timestampMs);
     }
 
     // Resend a captured payload once over the same UDP socket and log the result.

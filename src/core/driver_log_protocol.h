@@ -16,6 +16,17 @@ struct DriverLogEnvelope {
     // Monotonic across every event the driver emits, not per event type, so the
     // reports of all types share one order. Restarts at driver startup.
     std::uint64_t sequence = 0;
+    // When the driver emitted the event: milliseconds since the Unix epoch, UTC.
+    // Taken from the wall clock alongside the sequence number, so it says when
+    // the event happened rather than when a datagram arrived.
+    //
+    // This answers "when", never "in what order" — the wall clock can step
+    // backwards across an NTP correction or a manual change, and two events can
+    // share a millisecond. Order, deduplicate, and detect loss with `sequence`.
+    //
+    // Zero means the sender did not supply one, which is how a sender predating
+    // this field parses.
+    std::uint64_t timestampMs = 0;
     // Identical events the driver absorbed between the previous report of this
     // type and this one. Non-zero means a repeat was held rather than the stream
     // stalling. Event types that never suppress always report 0.

@@ -73,6 +73,8 @@ void AppendEnvelope(
     AppendEscaped(out, eventName);
     out += ",\"sequence\":";
     out += std::to_string(envelope.sequence);
+    out += ",\"timestamp_ms\":";
+    out += std::to_string(envelope.timestampMs);
     out += ",\"suppressed\":";
     out += std::to_string(envelope.suppressed);
     out += ",\"detail\":";
@@ -153,6 +155,15 @@ bool ParseEnvelope(
     // parses; absent means the sender reported every event it produced.
     const json::Value* suppressed = root.Find("suppressed");
     if (suppressed && !ParseNonNegativeInteger(*suppressed, envelope.suppressed)) {
+        envelope = {};
+        return false;
+    }
+
+    // Optional for the same reason: a sender predating the field is still a
+    // valid version 1 sender, and every other field remains usable without it.
+    // Absent leaves it zero, which a reader reads as "no driver time supplied".
+    const json::Value* timestamp = root.Find("timestamp_ms");
+    if (timestamp && !ParseNonNegativeInteger(*timestamp, envelope.timestampMs)) {
         envelope = {};
         return false;
     }

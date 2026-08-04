@@ -31,7 +31,8 @@ public:
         std::string payload,
         std::string detail,
         bool accepted,
-        std::uint64_t sequence);
+        std::uint64_t sequence,
+        std::uint64_t timestampMs);
     // A driver event that is never coalesced, placed by its sequence like the
     // command rows so all driver events share one order.
     void AddDriverEvent(
@@ -39,7 +40,8 @@ public:
         std::string result,
         std::string payload,
         std::string detail,
-        std::uint64_t sequence);
+        std::uint64_t sequence,
+        std::uint64_t timestampMs);
     const std::deque<UdpLogEntry>& Entries() const { return m_entries; }
     void Clear();
 
@@ -54,6 +56,10 @@ private:
     bool AlreadyLogged(std::uint64_t sequence) const;
     // True when nothing newer has been logged, so coalescing is safe.
     bool IsNewestDriverEvent(std::uint64_t sequence) const;
+    // When a driver event happened. Prefers the sender's own clock reading so
+    // the row shows when the driver saw the event rather than when this process
+    // dequeued it; falls back to now for a sender that supplied no time.
+    static std::chrono::system_clock::time_point DriverEventTime(std::uint64_t timestampMs);
     static std::string FormatTime(std::chrono::system_clock::time_point timePoint);
 
     std::deque<UdpLogEntry> m_entries;

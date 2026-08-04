@@ -43,14 +43,15 @@ void UdpLog::AddDriverCommand(
     std::string payload,
     std::string detail,
     bool accepted,
-    std::uint64_t sequence) {
+    std::uint64_t sequence,
+    std::uint64_t timestampMs) {
     const auto now = std::chrono::steady_clock::now();
     if (sequence != 0 && AlreadyLogged(sequence)) {
         return;  // UDP delivered this event twice
     }
 
     UdpLogEntry entry{};
-    entry.timestamp = std::chrono::system_clock::now();
+    entry.timestamp = DriverEventTime(timestampMs);
     entry.timeText = FormatTime(entry.timestamp);
     entry.reason = std::move(reason);
     entry.result = std::move(result);
@@ -81,13 +82,14 @@ void UdpLog::AddDriverEvent(
     std::string result,
     std::string payload,
     std::string detail,
-    std::uint64_t sequence) {
+    std::uint64_t sequence,
+    std::uint64_t timestampMs) {
     if (sequence != 0 && AlreadyLogged(sequence)) {
         return;
     }
 
     UdpLogEntry entry{};
-    entry.timestamp = std::chrono::system_clock::now();
+    entry.timestamp = DriverEventTime(timestampMs);
     entry.timeText = FormatTime(entry.timestamp);
     entry.reason = std::move(reason);
     entry.result = std::move(result);
@@ -152,6 +154,14 @@ void UdpLog::Push(UdpLogEntry entry) {
     while (m_entries.size() > kCapacity) {
         m_entries.pop_front();
     }
+}
+
+std::chrono::system_clock::time_point UdpLog::DriverEventTime(std::uint64_t timestampMs) {
+    if (timestampMs == 0) {
+        return std::chrono::system_clock::now();
+    }
+    return std::chrono::system_clock::time_point(
+        std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(timestampMs)));
 }
 
 std::string UdpLog::FormatTime(std::chrono::system_clock::time_point timePoint) {

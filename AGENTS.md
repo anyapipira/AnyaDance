@@ -107,7 +107,8 @@ a root turns off fetching for that dependency.
   of truth for successful commands;
   keep UI-side successful-send rows suppressed to avoid duplicates.
 - The driver log group carries more than one event type. Every event shares the
-  `DriverLogEnvelope` (`version`, `event`, `sequence`, `suppressed`, `detail`),
+  `DriverLogEnvelope` (`version`, `event`, `sequence`, `timestamp_ms`,
+  `suppressed`, `detail`),
   serialized by `AppendEnvelope` and validated by `ParseEnvelope` — add new event
   types through those, never by hand, or the envelope drifts. `sequence` is
   global across all events and all sender threads, not per type. Dispatch with
@@ -117,9 +118,16 @@ a root turns off fetching for that dependency.
   published to receivers is in `docs/protocol.md` — keep it accurate.
 - UDP reorders, duplicates, and drops. Order driver events by `sequence`, never
   by arrival: `UdpLog::InsertBySequence` places a late event within a bounded
-  window and drops a repeated one. Take the sequence number immediately before
-  sending — two threads share the counter, so anything between numbering and
-  `sendto` is a window in which events can leave out of order.
+  window and drops a repeated one. Call `DriverLogSender::Stamp` immediately
+  before sending — two threads share the counter, so anything between stamping
+  and `sendto` is a window in which events can leave out of order. Stamp rather
+  than setting the fields by hand, so a new event type cannot ship numbered but
+  untimed.
+- `timestamp_ms` says *when*, `sequence` says *in what order*. The wall clock can
+  step backwards (NTP, manual change, VM resume) and two events can share a
+  millisecond, so never order, deduplicate, or detect loss with the timestamp.
+  It is optional on the wire and zero when absent, which is how a sender
+  predating the field parses.
 - Haptic requests to the two controllers are reported as `haptic_vibration`,
   gated by `haptic_log_enabled` (default true); the `/output/haptic` component is
   always created, so the switch never changes what SteamVR sees. The driver

@@ -14,6 +14,7 @@ void TestDriverLogProtocol() {
     DriverCommandLogPacket source;
     source.envelope.sequence = 42;
     source.envelope.suppressed = 613;
+    source.envelope.timestampMs = 1700000000123ULL;
     source.senderHost = "127.0.0.1";
     source.senderPort = 54321;
     source.accepted = true;
@@ -29,6 +30,9 @@ void TestDriverLogProtocol() {
     EXPECT_TRUE(ParseDriverCommandLog(encoded, parsed));
     EXPECT_TRUE(parsed.envelope.sequence == 42);
     EXPECT_TRUE(parsed.envelope.suppressed == 613);
+    // Milliseconds past 2^32 must survive intact: the field is 64-bit, and epoch
+    // milliseconds exceeded 32 bits decades ago.
+    EXPECT_TRUE(parsed.envelope.timestampMs == 1700000000123ULL);
     EXPECT_TRUE(parsed.senderHost == "127.0.0.1");
     EXPECT_TRUE(parsed.senderPort == 54321);
     EXPECT_TRUE(parsed.accepted);
@@ -73,6 +77,33 @@ void TestDriverLogProtocol() {
         "\"suppressed\":\"3\"");
     EXPECT_FALSE(ParseDriverCommandLog(nonNumericSuppressed, parsed));
 
+    // "timestamp_ms" is optional for the same reason: a sender predating the
+    // field is still a valid version 1 sender, and every other field stays
+    // usable without it. Absent reads as "no driver time supplied".
+    std::string withoutTimestamp = encoded;
+    withoutTimestamp.replace(
+        withoutTimestamp.find(",\"timestamp_ms\":1700000000123"),
+        std::string(",\"timestamp_ms\":1700000000123").size(),
+        "");
+    EXPECT_TRUE(ParseDriverCommandLog(withoutTimestamp, parsed));
+    EXPECT_TRUE(parsed.envelope.timestampMs == 0);
+
+    // A present value must still be a non-negative integer, so a garbled clock
+    // reading is rejected rather than silently dating a row to 1970.
+    std::string negativeTimestamp = encoded;
+    negativeTimestamp.replace(
+        negativeTimestamp.find("\"timestamp_ms\":1700000000123"),
+        std::string("\"timestamp_ms\":1700000000123").size(),
+        "\"timestamp_ms\":-1");
+    EXPECT_FALSE(ParseDriverCommandLog(negativeTimestamp, parsed));
+
+    std::string nonNumericTimestamp = encoded;
+    nonNumericTimestamp.replace(
+        nonNumericTimestamp.find("\"timestamp_ms\":1700000000123"),
+        std::string("\"timestamp_ms\":1700000000123").size(),
+        "\"timestamp_ms\":\"2023-11-14T22:13:20Z\"");
+    EXPECT_FALSE(ParseDriverCommandLog(nonNumericTimestamp, parsed));
+
     const std::string malformed =
         "{\"version\":1,\"event\":\"command_processed\"}";
     EXPECT_FALSE(ParseDriverCommandLog(malformed, parsed));
@@ -103,6 +134,7 @@ namespace {
 void TestDriverHapticLog() {
     DriverHapticLogPacket source;
     source.envelope.sequence = 7;
+    source.envelope.timestampMs = 1700000000456ULL;
     source.device = DeviceIndex::RightController;
     source.durationSeconds = 0.125f;
     source.frequencyHz = 160.5f;
@@ -114,6 +146,9 @@ void TestDriverHapticLog() {
     DriverHapticLogPacket parsed;
     EXPECT_TRUE(ParseDriverHapticLog(encoded, parsed));
     EXPECT_TRUE(parsed.envelope.sequence == 7);
+    // The envelope is shared, so the time rides on every event type, not only
+    // on command reports.
+    EXPECT_TRUE(parsed.envelope.timestampMs == 1700000000456ULL);
     EXPECT_TRUE(parsed.device == DeviceIndex::RightController);
     EXPECT_NEAR(parsed.durationSeconds, 0.125f, 0.000001f);
     EXPECT_NEAR(parsed.frequencyHz, 160.5f, 0.0001f);

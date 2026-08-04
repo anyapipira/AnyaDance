@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/constants.h"
 #include "core/pose_sample.h"
 
 #include <array>
@@ -14,6 +15,8 @@ enum class VirtualDeviceKind {
 };
 
 struct VirtualDeviceDefinition {
+    // Identifies the device to shared core rules such as its Y floor.
+    anyadance::DeviceIndex index = anyadance::DeviceIndex::Hmd;
     std::string deviceId;
     std::string serial;
     VirtualDeviceKind kind = VirtualDeviceKind::Tracker;

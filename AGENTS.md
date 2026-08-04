@@ -90,8 +90,13 @@ a root turns off fetching for that dependency.
   virtual HMD in fully virtual mode.
 - All devices set `Prop_IgnoreMotionForStandby_Bool` so SteamVR does not idle a
   held-still virtual device into standby/powersave.
-- All device Y is clamped to `0–25 m` (`kMinDeviceY`–`kMaxDeviceY`) — in the UI before sending
-  and in the driver after packet validation.
+- Device Y shares the `kMaxDeviceY` ceiling of `25 m`, but the floor is
+  per-device: only the HMD is held above the ground plane (`kMinHmdY`, `0 m`),
+  because it is the play-space head. The other five may go below it and are
+  bounded only by `kMinTrackerY` (`-30 m`, the shared position range). Use
+  `MinDeviceY(index)` / `ClampDeviceY(index, y)` rather than a single constant.
+  Clamping happens in the UI before sending and in the driver after packet
+  validation.
 - The UDP log is always recorded in English. UI strings are localized through the
   row-per-string table in `src/ui/localization.*`; access with `Tr(Text::...)`.
   Adding a string is one enum value plus one table row (a `static_assert` guards

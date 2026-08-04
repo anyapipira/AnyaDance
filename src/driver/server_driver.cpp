@@ -10,12 +10,12 @@ using namespace vr;
 namespace {
 
 const VirtualDeviceDefinition kDeviceDefinitions[] = {
-    {"hmd", "anyadance_hmd_001", VirtualDeviceKind::Hmd, {0.0f, 1.50f, 0.0f}, TrackedControllerRole_Invalid},
-    {"left_controller", "anyadance_left_controller_001", VirtualDeviceKind::Controller, {-0.45f, 1.15f, 0.0f}, TrackedControllerRole_LeftHand},
-    {"right_controller", "anyadance_right_controller_001", VirtualDeviceKind::Controller, {0.45f, 1.15f, 0.0f}, TrackedControllerRole_RightHand},
-    {"hip", "anyadance_hip_001", VirtualDeviceKind::Tracker, {0.0f, 0.85f, 0.0f}, TrackedControllerRole_Invalid},
-    {"left_foot", "anyadance_left_foot_001", VirtualDeviceKind::Tracker, {-0.12f, 0.0f, 0.0f}, TrackedControllerRole_Invalid},
-    {"right_foot", "anyadance_right_foot_001", VirtualDeviceKind::Tracker, {0.12f, 0.0f, 0.0f}, TrackedControllerRole_Invalid},
+    {anyadance::DeviceIndex::Hmd, "hmd", "anyadance_hmd_001", VirtualDeviceKind::Hmd, {0.0f, 1.50f, 0.0f}, TrackedControllerRole_Invalid},
+    {anyadance::DeviceIndex::LeftController, "left_controller", "anyadance_left_controller_001", VirtualDeviceKind::Controller, {-0.45f, 1.15f, 0.0f}, TrackedControllerRole_LeftHand},
+    {anyadance::DeviceIndex::RightController, "right_controller", "anyadance_right_controller_001", VirtualDeviceKind::Controller, {0.45f, 1.15f, 0.0f}, TrackedControllerRole_RightHand},
+    {anyadance::DeviceIndex::Hip, "hip", "anyadance_hip_001", VirtualDeviceKind::Tracker, {0.0f, 0.85f, 0.0f}, TrackedControllerRole_Invalid},
+    {anyadance::DeviceIndex::LeftFoot, "left_foot", "anyadance_left_foot_001", VirtualDeviceKind::Tracker, {-0.12f, 0.0f, 0.0f}, TrackedControllerRole_Invalid},
+    {anyadance::DeviceIndex::RightFoot, "right_foot", "anyadance_right_foot_001", VirtualDeviceKind::Tracker, {0.12f, 0.0f, 0.0f}, TrackedControllerRole_Invalid},
 };
 
 ETrackedDeviceClass DeviceClassFor(VirtualDeviceKind kind) {

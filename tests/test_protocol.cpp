@@ -136,6 +136,18 @@ void TestProtocol() {
     EXPECT_NEAR(parsed.samples[DeviceSlot(DeviceIndex::Hmd)].position[1], kMaxDeviceY, 0.0001f);
     EXPECT_TRUE(parsed.y_clamped[DeviceSlot(DeviceIndex::Hmd)]);
 
+    // Only the HMD is lifted to the ground plane on the way in. A foot below it
+    // is accepted as sent and not reported as clamped.
+    const std::string hmdBelowFloor = "{\"version\":1,\"devices\":{\"hmd\":{\"valid\":true,\"connected\":true,\"pose\":{\"position\":[0,-2,0],\"rotation_xyzw\":[0,0,0,1]}}}}";
+    EXPECT_TRUE(ParsePoseFrame(hmdBelowFloor, parsed));
+    EXPECT_NEAR(parsed.samples[DeviceSlot(DeviceIndex::Hmd)].position[1], kMinHmdY, 0.0001f);
+    EXPECT_TRUE(parsed.y_clamped[DeviceSlot(DeviceIndex::Hmd)]);
+
+    const std::string footBelowFloor = "{\"version\":1,\"devices\":{\"left_foot\":{\"valid\":true,\"connected\":true,\"pose\":{\"position\":[0,-2,0],\"rotation_xyzw\":[0,0,0,1]}}}}";
+    EXPECT_TRUE(ParsePoseFrame(footBelowFloor, parsed));
+    EXPECT_NEAR(parsed.samples[DeviceSlot(DeviceIndex::LeftFoot)].position[1], -2.0f, 0.0001f);
+    EXPECT_FALSE(parsed.y_clamped[DeviceSlot(DeviceIndex::LeftFoot)]);
+
     // Position components beyond the +/-30 m safety range are rejected.
     const std::string outOfRange = "{\"version\":1,\"devices\":{\"hmd\":{\"valid\":true,\"connected\":true,\"pose\":{\"position\":[31,1,0],\"rotation_xyzw\":[0,0,0,1]}}}}";
     EXPECT_FALSE(ParsePoseFrame(outOfRange, parsed));

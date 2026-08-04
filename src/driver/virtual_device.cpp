@@ -689,8 +689,9 @@ DriverPose_t VirtualDevice::GetPose() {
 
 void VirtualDevice::ApplyPoseSample(const PoseSample& sample) {
     PoseSample safeSample = sample;
-    if (safeSample.position[1] < kMinDeviceY || safeSample.position[1] > kMaxDeviceY) {
-        safeSample.position[1] = ClampDeviceY(safeSample.position[1]);
+    const float minY = MinDeviceY(m_definition.index);
+    if (safeSample.position[1] < minY || safeSample.position[1] > kMaxDeviceY) {
+        safeSample.position[1] = ClampDeviceY(m_definition.index, safeSample.position[1]);
         safeSample.y_clamped = true;
     }
     if (safeSample.y_clamped) {
@@ -698,7 +699,7 @@ void VirtualDevice::ApplyPoseSample(const PoseSample& sample) {
         const auto now = std::chrono::steady_clock::now();
         if (now - lastClampWarning > std::chrono::seconds(1)) {
             DriverLog("[anyadance] Clamped device Y to [%.2f, %.2f] m; device=%s\n",
-                      kMinDeviceY, kMaxDeviceY, m_definition.serial.c_str());
+                      minY, kMaxDeviceY, m_definition.serial.c_str());
             lastClampWarning = now;
         }
     }

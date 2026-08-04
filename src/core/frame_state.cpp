@@ -45,12 +45,13 @@ void NeutralizeControllerInputs(FrameState& frame) {
 
 bool ClampFrameY(FrameState& frame) {
     bool anyClamped = false;
-    for (DeviceState& device : frame.devices) {
+    for (std::size_t slot = 0; slot < frame.devices.size(); ++slot) {
+        DeviceState& device = frame.devices[slot];
         const float originalX = device.position.x;
         const float originalY = device.position.y;
         const float originalZ = device.position.z;
         device.position.x = ClampFloat(device.position.x, -kMaxAbsPositionMeters, kMaxAbsPositionMeters);
-        device.position.y = ClampDeviceY(device.position.y);
+        device.position.y = ClampDeviceY(slot, device.position.y);
         device.position.z = ClampFloat(device.position.z, -kMaxAbsPositionMeters, kMaxAbsPositionMeters);
         device.y_clamped = device.position.y != originalY;
         anyClamped = anyClamped || device.position.x != originalX || device.y_clamped ||

@@ -87,8 +87,12 @@ float ClampFloat(float value, float low, float high) {
     return std::max(low, std::min(value, high));
 }
 
-float ClampDeviceY(float y) {
-    return ClampFloat(y, kMinDeviceY, kMaxDeviceY);
+float ClampDeviceY(DeviceIndex index, float y) {
+    return ClampFloat(y, MinDeviceY(index), kMaxDeviceY);
+}
+
+float ClampDeviceY(std::size_t slot, float y) {
+    return ClampDeviceY(static_cast<DeviceIndex>(slot), y);
 }
 
 } // namespace anyadance

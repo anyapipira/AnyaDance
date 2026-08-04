@@ -26,10 +26,14 @@ inline constexpr unsigned short kDriverLogPort = 39571;
 inline constexpr int kDriverLogProtocolVersion = 1;
 inline constexpr int kMaxDriverLogPacketBytes = 65507;
 inline constexpr float kMaxAbsPositionMeters = 30.0f;
-inline constexpr float kMinDeviceY = 0.0f;
 inline constexpr float kMaxDeviceY = 25.0f;
-// The HMD uses the shared floor while dragging.
+// Only the HMD has a floor. It is the play-space head, so placing it below the
+// ground plane puts the view underground. The other five devices legitimately go
+// below it — a foot passing under the floor plane, a hip in a floor move, or a
+// solved motion whose origin sits above the ground — so their Y is bounded only
+// by the shared position range that already applies to X and Z.
 inline constexpr float kMinHmdY = 0.0f;
+inline constexpr float kMinTrackerY = -kMaxAbsPositionMeters;
 inline constexpr int kStreamRateHz = 60;
 
 inline constexpr float kResetHmdY = 1.50f;
@@ -67,6 +71,15 @@ inline constexpr std::array<DeviceInfo, 6> kDevices = {{
 
 inline constexpr std::size_t DeviceSlot(DeviceIndex index) {
     return static_cast<std::size_t>(index);
+}
+
+// Lowest Y a device may occupy. Only the HMD is held above the ground plane.
+inline constexpr float MinDeviceY(DeviceIndex index) {
+    return index == DeviceIndex::Hmd ? kMinHmdY : kMinTrackerY;
+}
+
+inline constexpr float MinDeviceY(std::size_t slot) {
+    return MinDeviceY(static_cast<DeviceIndex>(slot));
 }
 
 } // namespace anyadance

@@ -182,9 +182,9 @@ Z     left trigger while held
 X     right trigger while held
 ```
 
-Mouse manipulation uses the six device boxes. The capture panel and boxes resize with the UI window. The HMD box allows rotation, plus vertical (Y) movement with a right mouse drag; a left+right chord provides the same vertical gesture. Other devices use left mouse drag for local X/Y movement, middle mouse drag for rotation, and right mouse drag for depth movement. All device Y positions use the `0–25 m` range. The HMD/Global frame radio buttons choose whether manipulation uses the HMD yaw basis or fixed world axes. The hand and foot pair mirror checkboxes use the same frame setting: HMD mode mirrors across the HMD-yaw YZ plane, and Global mode mirrors across world axes centered on the HMD position. The mouse wheel opens and closes both hands' fingers. Hold a number key while scrolling to bend a single finger: `1`-`5` are the left hand from pinky to thumb, `6`-`0` are the right hand from thumb to pinky (so `5`/`6` are the thumbs and `1`/`0` the pinkies). Each finger is clamped to `[0, 1]`, and scrolling all the way in one direction resets every finger to fully open or fully closed. Closing every finger on a hand into a fist (all bends near full) presses that hand's grip; releasing any finger releases it, which drives VRChat's grab.
+Mouse manipulation uses the six device boxes. The capture panel and boxes resize with the UI window. The HMD box allows rotation, plus vertical (Y) movement with a right mouse drag; a left+right chord provides the same vertical gesture. Other devices use left mouse drag for local X/Y movement, middle mouse drag for rotation, and right mouse drag for depth movement. Device Y is capped at `25 m`, and only the HMD has a floor at `0 m`; the other five devices may go below the ground plane down to `-30 m`. The HMD/Global frame radio buttons choose whether manipulation uses the HMD yaw basis or fixed world axes. The hand and foot pair mirror checkboxes use the same frame setting: HMD mode mirrors across the HMD-yaw YZ plane, and Global mode mirrors across world axes centered on the HMD position. The mouse wheel opens and closes both hands' fingers. Hold a number key while scrolling to bend a single finger: `1`-`5` are the left hand from pinky to thumb, `6`-`0` are the right hand from thumb to pinky (so `5`/`6` are the thumbs and `1`/`0` the pinkies). Each finger is clamped to `[0, 1]`, and scrolling all the way in one direction resets every finger to fully open or fully closed. Closing every finger on a hand into a fist (all bends near full) presses that hand's grip; releasing any finger releases it, which drives VRChat's grab.
 
-Dragging the empty area of the body panel acts as the right thumbstick: the press point is the stick center, and dragging deflects it within ±1 on each axis, returning to neutral on release. This is meant for navigating the right-hand quick menu (opened by holding `M`). The empty area also manipulates the whole rig at once: a middle mouse drag rotates all six devices (yaw/pitch) about the HMD position, a middle+right drag rolls them about the same pivot, and a right mouse drag moves the whole rig vertically while preserving its shape within the `0–25 m` Y range. Rig rotation uses the same HMD/Global frame setting as the per-device gestures.
+Dragging the empty area of the body panel acts as the right thumbstick: the press point is the stick center, and dragging deflects it within ±1 on each axis, returning to neutral on release. This is meant for navigating the right-hand quick menu (opened by holding `M`). The empty area also manipulates the whole rig at once: a middle mouse drag rotates all six devices (yaw/pitch) about the HMD position, a middle+right drag rolls them about the same pivot, and a right mouse drag moves the whole rig vertically while preserving its shape, stopping on the way down when the HMD reaches `0 m`. Rig rotation uses the same HMD/Global frame setting as the per-device gestures.
 
 ## MMD Dance
 
@@ -215,12 +215,12 @@ A `.nya` file is a small JSON clip of device-level frames — the six device pos
 plus per-hand finger bends — ready to stream with no further conversion. The
 format is the same for poses and animations: a **pose** is a one-frame clip
 (played as a held loop of that single frame) and an **animation** (such as a
-saved MMD dance) is many timed frames. Loading clamps device Y to `0–25 m` and
-finger bends to `[0, 1]`.
+saved MMD dance) is many timed frames. Loading clamps device Y to `0–25 m` for
+the HMD and `-30–25 m` for the other five devices, and finger bends to `[0, 1]`.
 
 ## Safety And Liveness
 
-All six devices use a `0–25 m` Y range. The UI clamps before serialization and the native driver clamps again after packet validation.
+All six devices share a `25 m` Y ceiling. Only the HMD has a floor, at `0 m` — it is the play-space head, so putting it below the ground plane puts the view underground. The other five devices legitimately go below it (a foot passing under the floor plane, a hip in a floor move) and are bounded only by the shared `±30 m` position range. The UI clamps before serialization and the native driver clamps again after packet validation.
 
 All six devices start connected and valid at neutral poses. Accepted packets update the latest pose and controller inputs. If packets stop, SteamVR continues to see each device connected, valid, and `TrackingResult_Running_OK` at its last accepted pose.
 

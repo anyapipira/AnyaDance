@@ -202,7 +202,8 @@ bool ParseProtocolVersion(std::string_view json) {
     return ExtractInt(json, "version", version) && version == kProtocolVersion;
 }
 
-bool ParseDeviceSample(std::string_view devicesObject, std::string_view deviceId, PoseSample& sample) {
+bool ParseDeviceSample(std::string_view devicesObject, const DeviceInfo& device, PoseSample& sample) {
+    const std::string_view deviceId = device.id;
     std::string_view deviceObject;
     if (!FindObjectAfterKey(devicesObject, deviceId, deviceObject)) {
         return false;
@@ -240,8 +241,8 @@ bool ParseDeviceSample(std::string_view devicesObject, std::string_view deviceId
     sample.valid = valid;
     sample.connected = connected;
     sample.position = position;
-    if (sample.position[1] < kMinDeviceY || sample.position[1] > kMaxDeviceY) {
-        sample.position[1] = ClampDeviceY(sample.position[1]);
+    if (sample.position[1] < MinDeviceY(device.index) || sample.position[1] > kMaxDeviceY) {
+        sample.position[1] = ClampDeviceY(device.index, sample.position[1]);
         sample.y_clamped = true;
     }
     sample.rotation_xyzw = rotation;
@@ -457,7 +458,7 @@ bool ParsePoseFrame(std::string_view json, ParsedFrame& frame) {
     bool anyPresent = false;
     for (const DeviceInfo& device : kDevices) {
         PoseSample sample;
-        if (ParseDeviceSample(devicesObject, device.id, sample)) {
+        if (ParseDeviceSample(devicesObject, device, sample)) {
             if (hasInputs) {
                 ParseControllerInput(inputsObject, device.id, sample);
             }

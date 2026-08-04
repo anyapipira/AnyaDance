@@ -281,7 +281,7 @@ Each device entry requires:
 | --- | --- | --- |
 | `valid` | Boolean | Required for the entry to parse. Version 1 keeps every virtual device valid after startup, so the driver currently reports `true` to SteamVR regardless of this value. |
 | `connected` | Boolean | Required for the entry to parse. Version 1 keeps every virtual device connected after startup, so the driver currently reports `true` to SteamVR regardless of this value. |
-| `pose.position` | Three-number array | Required. Metres in driver pose space; every component must be finite and within `-30.0` to `30.0`. Y is clamped to `0.0`–`25.0`. |
+| `pose.position` | Three-number array | Required. Metres in driver pose space; every component must be finite and within `-30.0` to `30.0`. Y is clamped to `0.0`–`25.0` for `hmd` and to `-30.0`–`25.0` for every other device. |
 | `pose.rotation_xyzw` | Four-number array | Required. Quaternion in XYZW order; values must be finite and its squared length must be from `0.5` through `1.5`. Accepted values are normalized. |
 
 The `inputs` object is optional. Only `left_controller` and `right_controller`
@@ -329,7 +329,19 @@ Accepted quaternions are normalized before use.
 ## Position Limits
 
 All position components must be finite and within `±30 m`. Device Y is further
-clamped to the `0–25 m` range by both the companion UI and the driver.
+capped at `25 m` by both the companion UI and the driver.
+
+The Y floor is per-device. Only `hmd` is held at or above `0 m`: it is the
+play-space head, and placing it below the ground plane puts the view
+underground. The other five devices legitimately go below it — a foot passing
+under the floor plane, a hip in a floor move, or a solved motion whose origin
+sits above the ground — so their Y is bounded only by the shared `±30 m`
+position range.
+
+| Device | Y range |
+| --- | --- |
+| `hmd` | `0 m` to `25 m` |
+| `left_controller`, `right_controller`, `hip`, `left_foot`, `right_foot` | `-30 m` to `25 m` |
 
 ## Pose Liveness
 

@@ -34,19 +34,18 @@ Vec3 Subtract(Vec3 lhs, Vec3 rhs) {
     return {lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
 }
 
-// Translate Y by the accumulated vertical drag, clamped to the shared device
-// range and an optional per-caller floor. When the target overshoots a bound,
-// re-anchor the accumulator so a reversed drag moves away immediately.
-float ClampedDragY(float startY, float& accumulatedDy,
-                   float floorY = std::numeric_limits<float>::lowest()) {
+// Translate Y by the accumulated vertical drag, clamped to the shared ceiling
+// and the caller's floor. The floor is device-dependent, so the caller supplies
+// it. When the target overshoots a bound, re-anchor the accumulator so a
+// reversed drag moves away immediately.
+float ClampedDragY(float startY, float& accumulatedDy, float floorY) {
     float targetY = startY - accumulatedDy * kTranslationMetersPerCount;
     if (targetY > kMaxDeviceY) {
         accumulatedDy = (startY - kMaxDeviceY) / kTranslationMetersPerCount;
         targetY = kMaxDeviceY;
-    } else if (targetY < std::max(floorY, kMinDeviceY)) {
-        const float minimumY = std::max(floorY, kMinDeviceY);
-        accumulatedDy = (startY - minimumY) / kTranslationMetersPerCount;
-        targetY = minimumY;
+    } else if (targetY < floorY) {
+        accumulatedDy = (startY - floorY) / kTranslationMetersPerCount;
+        targetY = floorY;
     }
     return targetY;
 }
@@ -92,7 +91,7 @@ void ApplyDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, float
             // locked so the play-space origin does not drift.
             device.position.y = ClampedDragY(drag.startFrame.devices[slot].position.y, drag.accumulatedDy, kMinHmdY);
             device.y_clamped = device.position.y != drag.startFrame.devices[slot].position.y &&
-                               (device.position.y == kMinDeviceY || device.position.y == kMaxDeviceY);
+                               (device.position.y == kMinHmdY || device.position.y == kMaxDeviceY);
         } else {
             ApplyRotation(device, drag.startFrame.devices[slot].rotation, basis, drag.accumulatedDx, drag.accumulatedDy, 0.0f);
         }
@@ -110,10 +109,11 @@ void ApplyDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, float
     } else {
         const Vec3 right = Rotate(basis, {1.0f, 0.0f, 0.0f});
         device.position = Add(device.position, Scale(right, drag.accumulatedDx * kTranslationMetersPerCount));
-        device.position.y = ClampedDragY(drag.startFrame.devices[slot].position.y, drag.accumulatedDy);
+        device.position.y = ClampedDragY(drag.startFrame.devices[slot].position.y, drag.accumulatedDy,
+                                         MinDeviceY(drag.device));
     }
 
-    device.position.y = ClampDeviceY(device.position.y);
+    device.position.y = ClampDeviceY(drag.device, device.position.y);
     device.y_clamped = device.position.y != drag.startFrame.devices[slot].position.y;
     frame.devices[slot] = device;
 }
@@ -144,7 +144,7 @@ void ApplyRigDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, fl
             DeviceState device = start;
             device.position = Add(pivot, Rotate(deltaInBasis, Subtract(start.position, pivot)));
             device.rotation = Normalized(Multiply(deltaInBasis, start.rotation));
-            device.position.y = ClampDeviceY(device.position.y);
+            device.position.y = ClampDeviceY(slot, device.position.y);
             device.y_clamped = device.position.y != start.position.y;
             frame.devices[slot] = device;
         }
@@ -152,21 +152,25 @@ void ApplyRigDragDelta(DragSnapshot& drag, FrameState& frame, float dxCounts, fl
     }
 
     // Vertical move: shift the whole rig on world Y. Express the bounds in the
-    // highest device's terms so the rig remains rigid within the shared Y range.
+    // highest device's terms so the rig remains rigid within the Y range. The
+    // ceiling belongs to the highest device, but the floor is per-device, so it
+    // is the tightest of the shifts each device can still absorb — in practice
+    // the HMD, the only device held above the ground plane.
     float highestStartY = drag.startFrame.devices[0].position.y;
     for (const DeviceState& start : drag.startFrame.devices) {
         highestStartY = std::max(highestStartY, start.position.y);
     }
-    float lowestStartY = drag.startFrame.devices[0].position.y;
-    for (const DeviceState& start : drag.startFrame.devices) {
-        lowestStartY = std::min(lowestStartY, start.position.y);
+    float minimumDeltaY = MinDeviceY(std::size_t{0}) - drag.startFrame.devices[0].position.y;
+    for (std::size_t slot = 0; slot < drag.startFrame.devices.size(); ++slot) {
+        minimumDeltaY = std::max(minimumDeltaY,
+                                 MinDeviceY(slot) - drag.startFrame.devices[slot].position.y);
     }
-    const float rigFloorY = kMinDeviceY + (highestStartY - lowestStartY);
+    const float rigFloorY = highestStartY + minimumDeltaY;
     const float deltaY = ClampedDragY(highestStartY, drag.accumulatedDy, rigFloorY) - highestStartY;
     for (std::size_t slot = 0; slot < frame.devices.size(); ++slot) {
         const DeviceState& start = drag.startFrame.devices[slot];
         DeviceState device = start;
-        device.position.y = ClampDeviceY(start.position.y + deltaY);
+        device.position.y = ClampDeviceY(slot, start.position.y + deltaY);
         device.y_clamped = device.position.y != start.position.y + deltaY;
         frame.devices[slot] = device;
     }
@@ -204,7 +208,7 @@ void ApplySymmetricMirror(const DragSnapshot& drag, FrameState& frame, DeviceInd
     Vec3 activeLocal = Rotate(Conjugate(yawBasis), Subtract(active.position, origin));
     activeLocal.x = -activeLocal.x;
     mirrored.position = Add(origin, Rotate(yawBasis, activeLocal));
-    mirrored.position.y = ClampDeviceY(mirrored.position.y);
+    mirrored.position.y = ClampDeviceY(mirroredDevice, mirrored.position.y);
     mirrored.y_clamped = mirrored.position.y != active.position.y;
     mirrored.rotation = MirrorRotationInYawBasis(active.rotation, yawBasisRadians);
 

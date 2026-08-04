@@ -61,6 +61,32 @@ void TestSafety() {
     for (const DeviceState& device : low.devices) {
         EXPECT_FALSE(device.y_clamped);
     }
+
+    // Only the HMD is lifted back to the ground plane. The other devices keep a
+    // negative Y and are bounded only by the shared position range.
+    FrameState below = MakeNeutralFrame();
+    for (DeviceState& device : below.devices) {
+        device.position.y = -2.0f;
+    }
+    EXPECT_TRUE(ClampFrameY(below));
+    EXPECT_NEAR(below.devices[DeviceSlot(DeviceIndex::Hmd)].position.y, kMinHmdY, 0.0001f);
+    EXPECT_TRUE(below.devices[DeviceSlot(DeviceIndex::Hmd)].y_clamped);
+    for (const DeviceInfo& info : kDevices) {
+        if (info.index == DeviceIndex::Hmd) {
+            continue;
+        }
+        const DeviceState& device = below.devices[DeviceSlot(info.index)];
+        EXPECT_NEAR(device.position.y, -2.0f, 0.0001f);
+        EXPECT_FALSE(device.y_clamped);
+    }
+
+    FrameState farBelow = MakeNeutralFrame();
+    for (DeviceState& device : farBelow.devices) {
+        device.position.y = -40.0f;
+    }
+    EXPECT_TRUE(ClampFrameY(farBelow));
+    EXPECT_NEAR(farBelow.devices[DeviceSlot(DeviceIndex::LeftFoot)].position.y, kMinTrackerY, 0.0001f);
+    EXPECT_TRUE(farBelow.devices[DeviceSlot(DeviceIndex::LeftFoot)].y_clamped);
 }
 
 } // namespace anyadance::tests

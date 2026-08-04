@@ -29,6 +29,9 @@ float YawFromQuaternion(Quat rotation);
 Vec3 Add(Vec3 lhs, Vec3 rhs);
 Vec3 Scale(Vec3 value, float scalar);
 float ClampFloat(float value, float low, float high);
-float ClampDeviceY(float y);
+// Clamps to the Y range of the given device. The floor is device-dependent, so
+// the caller must say which device the value belongs to.
+float ClampDeviceY(DeviceIndex index, float y);
+float ClampDeviceY(std::size_t slot, float y);
 
 } // namespace anyadance

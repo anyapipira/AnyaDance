@@ -119,7 +119,9 @@ void LoadPreferences(HWND hwnd) {
             in >> value;
             g_app.alwaysOnTop = value != 0;
         } else if (key == "monitor_driver_commands") {
-            int value = 1;
+            // Matches the off-by-default state, so a malformed value falls back to
+            // the default rather than silently enabling monitoring.
+            int value = 0;
             in >> value;
             g_app.monitorDriverCommands = value != 0;
         } else if (key == "ui_mode") {

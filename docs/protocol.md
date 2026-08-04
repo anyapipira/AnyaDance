@@ -224,7 +224,8 @@ reported, so a listener recording a moving sequence receives every frame of it.
 The count of absorbed repeats rides along on the next report's `suppressed`
 field, which keeps a held pose distinguishable from a stalled sender.
 
-The UI's **Monitor driver commands** switch joins or leaves the default
+The UI's **Monitor driver commands** switch is off by default and is remembered
+across launches in `%LOCALAPPDATA%\AnyaDance\ui_state.ini`. It joins or leaves the default
 multicast group immediately. While the listener is joined, driver reports are the source of truth
 for successful command rows and the UI suppresses its own successful-send rows.
 Local socket failures remain visible because the driver cannot report a command

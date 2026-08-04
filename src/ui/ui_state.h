@@ -403,7 +403,10 @@ struct AppState {
     std::string driverStatusDetail;
     int selectedLogIndex = -1;
     bool logScrollToLatest = true;
-    bool monitorDriverCommands = true;
+    // Off until the user asks for it: joining the group makes driver reports the
+    // source of truth for successful sends, which is a monitoring choice rather
+    // than a default. LoadPreferences restores whatever the user last chose.
+    bool monitorDriverCommands = false;
 
     // MMD dance: dialog parameters, async Blender solve, and playback state.
     bool danceDialogOpen = false;

@@ -149,7 +149,7 @@ group by default. The group and port are configurable in the same section:
 }
 ```
 
-The UI's **Monitor driver commands** switch joins or leaves the default group immediately. Multiple local applications can subscribe simultaneously. Run `.\scripts\listen_driver_log.ps1` for a reference listener, or add `-Validate -ListenerCount 3` to verify three independent receiver processes. See [docs/protocol.md](docs/protocol.md#driver-command-logging) for the packet schema and delivery behavior.
+The UI's **Monitor driver commands** switch starts off and remembers your choice across launches. It joins or leaves the default group immediately. Multiple local applications can subscribe simultaneously. Run `.\scripts\listen_driver_log.ps1` for a reference listener, or add `-Validate -ListenerCount 3` to verify three independent receiver processes. See [docs/protocol.md](docs/protocol.md#driver-command-logging) for the packet schema and delivery behavior.
 
 ## Run The Test UI
 

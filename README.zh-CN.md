@@ -147,7 +147,7 @@ ctest --test-dir build -C Release --output-on-failure
 }
 ```
 
-UI 中的 **监视驱动命令** 开关会立即加入或离开默认多播组。多个本机应用可同时订阅。运行 `.\scripts\listen_driver_log.ps1` 可启动参考监听器；添加 `-Validate -ListenerCount 3` 可验证三个独立接收进程。数据包结构与传递行为见 [docs/protocol.zh-CN.md](docs/protocol.zh-CN.md#驱动命令日志)。
+UI 中的 **监视驱动命令** 开关默认关闭，并会记住你的选择、在下次启动时恢复。该开关会立即加入或离开默认多播组。多个本机应用可同时订阅。运行 `.\scripts\listen_driver_log.ps1` 可启动参考监听器；添加 `-Validate -ListenerCount 3` 可验证三个独立接收进程。数据包结构与传递行为见 [docs/protocol.zh-CN.md](docs/protocol.zh-CN.md#驱动命令日志)。
 
 ## 运行测试界面
 

@@ -26,8 +26,39 @@ struct DriverCommandLogPacket {
     std::string detail;
 };
 
+// One haptic pulse SteamVR asked a virtual controller to play. The driver only
+// observes and reports it; nothing is played back, and no acknowledgement is
+// expected. Values are passed through as SteamVR supplied them.
+struct DriverHapticLogPacket {
+    std::uint64_t sequence = 0;
+    DeviceIndex device = DeviceIndex::LeftController;
+    float durationSeconds = 0.0f;
+    float frequencyHz = 0.0f;
+    float amplitude = 0.0f;
+};
+
+// Which event a datagram on the driver log group carries. Readers dispatch on
+// this so a stream carrying more than one event type stays parseable.
+enum class DriverLogEventType {
+    CommandProcessed,
+    HapticVibration,
+};
+
+struct DriverLogEvent {
+    DriverLogEventType type = DriverLogEventType::CommandProcessed;
+    DriverCommandLogPacket command;  // valid when type is CommandProcessed
+    DriverHapticLogPacket haptic;    // valid when type is HapticVibration
+};
+
 std::string SerializeDriverCommandLog(const DriverCommandLogPacket& packet);
 bool ParseDriverCommandLog(std::string_view json, DriverCommandLogPacket& packet);
 bool ParseDriverCommandLogBytes(const char* data, int size, DriverCommandLogPacket& packet);
+
+std::string SerializeDriverHapticLog(const DriverHapticLogPacket& packet);
+bool ParseDriverHapticLog(std::string_view json, DriverHapticLogPacket& packet);
+
+// Parses any event on the driver log group. Unknown event names are rejected so
+// a reader never mistakes one event's shape for another's.
+bool ParseDriverLogBytes(const char* data, int size, DriverLogEvent& event);
 
 } // namespace anyadance

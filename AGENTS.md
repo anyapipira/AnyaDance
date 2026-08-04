@@ -22,7 +22,7 @@ Released under the Apache License 2.0 as part of Project Anya.
   one-frame clip, an animation is many). Built as `anyadance_core` and exercised
   by the tests. Keep it free of OpenVR and Win32 so tests build it.
 - `src/driver/` — the SteamVR driver DLL (`server_driver`, `virtual_device`,
-  `udp_pose_receiver`). Links OpenVR.
+  `udp_pose_receiver`, `driver_log_sender`). Links OpenVR.
 - `src/ui/` — the Dear ImGui Win32/DX11 UI (`main.cpp`, `localization`,
   `driver_control`, `mmd_dance`). `mmd_dance` launches Blender headless with
   `scripts/blender_export_mmd.py` to solve a VMD against a model and reads back the
@@ -106,6 +106,12 @@ a root turns off fetching for that dependency.
   and non-blocking. When the UI joins that group, driver reports are the source
   of truth for successful commands;
   keep UI-side successful-send rows suppressed to avoid duplicates.
+- The driver log group carries more than one event type. Dispatch on the `event`
+  field (`ParseDriverLogBytes`) rather than assuming a command report. Haptic
+  requests to the two controllers are reported as `haptic_vibration`, gated by
+  `haptic_log_enabled` (default true); the `/output/haptic` component is always
+  created, so the switch never changes what SteamVR sees. The driver observes
+  haptics only — it has no motor and plays nothing back.
 - The driver reports a command only when it differs from the last reported one
   (`SamePoseCommand`), because a held pose repeats at the stream rate. Keep this
   a change filter, not a rate limit: every distinct command still goes out, and

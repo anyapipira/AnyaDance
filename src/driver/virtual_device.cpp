@@ -613,7 +613,8 @@ VirtualDevice::VirtualDevice(VirtualDeviceDefinition definition)
       m_joystickY(k_ulInvalidInputComponentHandle),
       m_trackpadX(k_ulInvalidInputComponentHandle),
       m_trackpadY(k_ulInvalidInputComponentHandle),
-      m_skeletonHandle(k_ulInvalidInputComponentHandle) {
+      m_skeletonHandle(k_ulInvalidInputComponentHandle),
+      m_hapticHandle(k_ulInvalidInputComponentHandle) {
     std::memset(&m_pose, 0, sizeof(m_pose));
     m_pose.qWorldFromDriverRotation.w = 1.0f;
     m_pose.qDriverFromHeadRotation.w = 1.0f;
@@ -662,6 +663,7 @@ void VirtualDevice::Deactivate() {
     m_trackpadX = k_ulInvalidInputComponentHandle;
     m_trackpadY = k_ulInvalidInputComponentHandle;
     m_skeletonHandle = k_ulInvalidInputComponentHandle;
+    m_hapticHandle = k_ulInvalidInputComponentHandle;
     m_hasFingerBends = false;
 }
 
@@ -979,6 +981,12 @@ void VirtualDevice::ActivateController(PropertyContainerHandle_t container) {
         nullptr,
         0,
         &m_skeletonHandle);
+
+    // Advertise haptics the way a real Index controller does, so SteamVR routes
+    // VREvent_Input_HapticVibration here. The driver plays nothing back — the
+    // virtual controller has no motor — it only observes the request so external
+    // tools can react to it. See docs/protocol.md.
+    VRDriverInput()->CreateHapticComponent(container, "/output/haptic", &m_hapticHandle);
 }
 
 void VirtualDevice::ActivateTracker(PropertyContainerHandle_t container) {

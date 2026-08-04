@@ -91,6 +91,20 @@ $receiver = {
 
             try {
                 $event = $text | ConvertFrom-Json -ErrorAction Stop
+                # The group carries more than one event type, so dispatch on the
+                # event name instead of assuming a command report.
+                if ($event.event -eq "haptic_vibration") {
+                    Write-Host (
+                        "[{0:HH:mm:ss.fff}] {1} haptic #{2} {3} - {4:N3} s at {5:N1} Hz, amplitude {6:N2}" -f
+                        [DateTime]::Now,
+                        $ListenerName,
+                        $event.sequence,
+                        $event.device,
+                        $event.haptic.duration_seconds,
+                        $event.haptic.frequency_hz,
+                        $event.haptic.amplitude)
+                    continue
+                }
                 $result = if ($event.command.accepted) { "accepted" } else { "rejected" }
                 # Reports arrive only when a command changes. A non-zero
                 # suppressed count is how many identical commands the driver

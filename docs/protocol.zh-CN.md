@@ -29,13 +29,16 @@ UTF-8 JSON
 日志数据报最大尺寸：65507 字节
 ```
 
+同一多播组还会承载触觉事件（参见[触觉事件](#触觉事件)）。读取端必须依据 `event` 字段分派，而不能假定每个数据报都是命令报告。
+
 日志多播组独立于命令接收端点。可在 `steamvr.vrsettings` 的 `driver_anyadance` 小节中配置；修改后重启 SteamVR：
 
 ```json
 "driver_anyadance": {
     "command_log_enabled": true,
     "command_log_multicast_group": "239.255.39.71",
-    "command_log_port": 39571
+    "command_log_port": 39571,
+    "haptic_log_enabled": true
 }
 ```
 
@@ -80,7 +83,7 @@ UTF-8 JSON
 | 字段 | 含义 |
 | --- | --- |
 | `version` | 驱动日志协议版本；当前为版本 1。 |
-| `event` | 事件类型；版本 1 发送 `command_processed`。 |
+| `event` | 事件类型。此结构为 `command_processed`；`haptic_vibration` 参见[触觉事件](#触觉事件)。请依据该字段分派。 |
 | `sequence` | 当前驱动接收器生命周期内单调递增的报告编号；驱动启动时重新计数。编号针对报告而非命令，因此抑制重复命令不会造成编号断档。 |
 | `suppressed` | 在上一份报告与本报告之间，驱动吸收掉的相同命令数量。`0` 表示上一条命令没有被重复发送。该字段可选：逐条上报的发送端可以省略，读取端在字段缺失时按 `0` 处理。 |
 | `source.host`、`source.port` | 向端口 `39570` 发送原始姿态数据报的端点。 |
@@ -101,6 +104,38 @@ UTF-8 JSON
 抑制是变化过滤而非限速：不同的命令始终会被上报，因此记录一段移动序列的监听器仍能收到其中的每一帧。被吸收的重复数量会随下一份报告的 `suppressed` 字段一同送出，从而让"保持姿态"与"发送端停止推流"始终可以区分。
 
 UI 中的 **监视驱动命令** 开关可立即加入或离开默认多播组。监听器加入期间，驱动报告是成功命令日志行的事实来源，UI 会抑制自身的成功发送记录。本地套接字错误仍会显示，因为驱动无法报告它没有收到的命令。来自同一发送端的快速成功报告会按 100 毫秒显示窗口合并；拒绝报告则逐条保留。合并仅作用于 UI 显示，并叠加在驱动的重复命令抑制之上：移动中的姿态每 100 毫秒仍产生一行，而保持不变的姿态不再产生新行。若某行对应的报告带有非零 `suppressed` 计数，则说明在它之前有多少条相同命令被保持。
+
+## 触觉事件
+
+两个虚拟手柄会像真实 Index 手柄那样公开 `/output/haptic` 组件，使 SteamVR 将触觉请求路由到它们。驱动没有马达，也不会回放任何振动；它只上报该请求，以便外部工具据此作出反应——例如驱动指示灯，或转发到实体硬件。
+
+上报发送到与命令报告相同的多播组与端口，因此监听器只需加入一个组即可同时观察两者。`driver_anyadance` 小节中的 `haptic_log_enabled` 控制该上报，默认为 `true`；`/output/haptic` 组件始终会创建，因此关闭上报不会改变 SteamVR 或游戏所看到的内容。上报在 SteamVR 的 `RunFrame` 线程上以尽力而为且非阻塞的方式进行：套接字缓冲区已满或没有监听器时会丢弃该报告，而不会拖慢一帧。不需要也不会读取任何确认。
+
+```json
+{
+  "version": 1,
+  "event": "haptic_vibration",
+  "sequence": 7,
+  "device": "right_controller",
+  "haptic": {
+    "duration_seconds": 0.125,
+    "frequency_hz": 160.5,
+    "amplitude": 0.75
+  }
+}
+```
+
+| 字段 | 含义 |
+| --- | --- |
+| `version` | 驱动日志协议版本；当前为版本 1。 |
+| `event` | 此结构固定为 `haptic_vibration`。 |
+| `sequence` | 单调递增的报告编号。由于两个流独立产生，它与 `command_processed` 的编号分别计数；驱动启动时重新计数。 |
+| `device` | 被要求振动的手柄：`left_controller` 或 `right_controller`。 |
+| `haptic.duration_seconds` | 请求的脉冲时长（秒）。`0` 是合法的停止请求。 |
+| `haptic.frequency_hz` | 请求的振动频率（赫兹）。 |
+| `haptic.amplitude` | 请求的强度，范围 `0.0` 到 `1.0`。 |
+
+这些值按 SteamVR 提供的原样透传；除拒绝非有限数值外，驱动不施加自己的策略。由于两种事件共享同一个组且各自独立编号，读取端必须先依据 `event` 分派，然后再读取其他字段。
 
 ## 坐标约定
 

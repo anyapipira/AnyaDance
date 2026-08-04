@@ -30,7 +30,7 @@ anyadance_left_foot_001              通用追踪器
 anyadance_right_foot_001             通用追踪器
 ```
 
-控制器声明为 `knuckles` 控制器类型，并通过 `{indexcontroller}` 使用 Valve Index 渲染模型。输入配置位于公共的 `{anyadance}` 资源命名空间下。
+控制器声明为 `knuckles` 控制器类型，并通过 `{indexcontroller}` 使用 Valve Index 渲染模型。输入配置位于公共的 `{anyadance}` 资源命名空间下。它们还公开 `/output/haptic` 组件，使 SteamVR 将触觉请求路由到它们；驱动没有马达、不会回放振动，但会在驱动日志组上上报每一次请求（参见 [protocol.md](protocol.md)）。
 
 ## T 姿势常量
 

@@ -32,6 +32,10 @@ logging version: 1
 maximum logging datagram size: 65507 bytes
 ```
 
+The same group also carries haptic events (see [Haptic Events](#haptic-events)).
+A reader must dispatch on the `event` field rather than assume every datagram is
+a command report.
+
 The logging group is independent of the command receiver. Configure it in
 the `driver_anyadance` section of `steamvr.vrsettings` and restart SteamVR to
 apply a change:
@@ -40,7 +44,8 @@ apply a change:
 "driver_anyadance": {
     "command_log_enabled": true,
     "command_log_multicast_group": "239.255.39.71",
-    "command_log_port": 39571
+    "command_log_port": 39571,
+    "haptic_log_enabled": true
 }
 ```
 
@@ -94,7 +99,7 @@ Each packet uses this shape:
 | Field | Meaning |
 | --- | --- |
 | `version` | Driver logging protocol version. Version 1 is current. |
-| `event` | Event type; version 1 emits `command_processed`. |
+| `event` | Event type. `command_processed` for this shape; see [Haptic Events](#haptic-events) for `haptic_vibration`. Dispatch on this field. |
 | `sequence` | Monotonic report number for the current driver receiver lifetime. It restarts at driver startup. Reports are numbered, not commands, so gaps do not appear when repeats are suppressed. |
 | `suppressed` | Identical commands the driver absorbed between the previous report and this one. `0` means the previous command was not repeated. Optional: a sender that reports every command may omit it, and a reader that omits it treats it as `0`. |
 | `source.host`, `source.port` | Endpoint that sent the original pose datagram to port `39570`. |
@@ -140,6 +145,50 @@ limited to the UI display and applies on top of the driver's held-command
 suppression, so a moving pose still produces one row per 100 ms while a held pose
 produces none. A row whose report carried a non-zero `suppressed` count says how
 many identical commands were held before it.
+
+## Haptic Events
+
+The two virtual controllers expose an `/output/haptic` component, the way a real
+Index controller does, so SteamVR routes haptic requests to them. The driver has
+no motor and plays nothing back; it only reports the request so external tools
+can react to it — driving indicators, or forwarding to physical hardware.
+
+Reports go to the same multicast group and port as command reports, so a listener
+joins one group to observe both. `haptic_log_enabled` in the `driver_anyadance`
+section gates them and defaults to `true`; the `/output/haptic` component is
+always created, so turning reporting off does not change what SteamVR or a game
+sees. Reporting is best-effort and non-blocking on SteamVR's `RunFrame` thread:
+a full socket buffer or an absent listener drops the report rather than delaying
+a frame. No acknowledgement is expected or read.
+
+```json
+{
+  "version": 1,
+  "event": "haptic_vibration",
+  "sequence": 7,
+  "device": "right_controller",
+  "haptic": {
+    "duration_seconds": 0.125,
+    "frequency_hz": 160.5,
+    "amplitude": 0.75
+  }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `version` | Driver logging protocol version. Version 1 is current. |
+| `event` | Always `haptic_vibration` for this shape. |
+| `sequence` | Monotonic report number, counted separately from `command_processed` reports because the two streams are produced independently. It restarts at driver startup. |
+| `device` | Controller asked to vibrate: `left_controller` or `right_controller`. |
+| `haptic.duration_seconds` | Requested pulse length in seconds. `0` is a legitimate stop request. |
+| `haptic.frequency_hz` | Requested vibration frequency in hertz. |
+| `haptic.amplitude` | Requested strength, `0.0` through `1.0`. |
+
+Values are passed through as SteamVR supplied them; the driver applies no policy
+of its own beyond rejecting non-finite numbers. Because the two event types share
+a group and number their sequences independently, a reader must dispatch on
+`event` before reading any other field.
 
 ## Coordinate Expectations
 

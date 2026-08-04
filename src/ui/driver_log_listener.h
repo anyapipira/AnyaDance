@@ -15,7 +15,7 @@ namespace anyadance::ui {
 // socket and thread so monitoring can be toggled without disturbing pose sends.
 class DriverLogListener {
 public:
-    using Callback = std::function<void(DriverCommandLogPacket)>;
+    using Callback = std::function<void(DriverLogEvent)>;
 
     ~DriverLogListener() { Stop(); }
 

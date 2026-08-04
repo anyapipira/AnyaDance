@@ -25,6 +25,10 @@ inline constexpr const char* kDriverLogMulticastInterface = "127.0.0.1";
 inline constexpr unsigned short kDriverLogPort = 39571;
 inline constexpr int kDriverLogProtocolVersion = 1;
 inline constexpr int kMaxDriverLogPacketBytes = 65507;
+// Sanity bounds for reported haptic pulses. The driver forwards what SteamVR
+// supplied, so these only reject nonsense rather than asserting a policy.
+inline constexpr float kMaxHapticDurationSeconds = 3600.0f;
+inline constexpr float kMaxHapticFrequencyHz = 100000.0f;
 inline constexpr float kMaxAbsPositionMeters = 30.0f;
 inline constexpr float kMaxDeviceY = 25.0f;
 // Only the HMD has a floor. It is the play-space head, so placing it below the

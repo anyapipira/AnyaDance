@@ -3,6 +3,7 @@
 #include "core/json.h"
 
 #include <cmath>
+#include <cstdio>
 
 namespace anyadance {
 namespace {
@@ -76,6 +77,27 @@ bool ParseBoundedInt(const json::Value& value, int minValue, int maxValue, int& 
         return false;
     }
     result = static_cast<int>(value.number);
+    return true;
+}
+
+// Compact round-trippable float. %.9g preserves a float exactly and drops the
+// trailing zeros a fixed format would emit.
+void AppendFloat(std::string& out, float value) {
+    char buffer[32];
+    const int written = std::snprintf(buffer, sizeof(buffer), "%.9g", static_cast<double>(value));
+    if (written <= 0 || written >= static_cast<int>(sizeof(buffer))) {
+        out += '0';
+        return;
+    }
+    out.append(buffer, static_cast<std::size_t>(written));
+}
+
+bool ParseFiniteFloat(const json::Value& value, float low, float high, float& result) {
+    if (value.type != json::Type::Number || !std::isfinite(value.number) ||
+        value.number < low || value.number > high) {
+        return false;
+    }
+    result = static_cast<float>(value.number);
     return true;
 }
 
@@ -202,6 +224,93 @@ bool ParseDriverCommandLogBytes(const char* data, int size, DriverCommandLogPack
     }
     return ParseDriverCommandLog(
         std::string_view(data, static_cast<std::size_t>(size)), packet);
+}
+
+std::string SerializeDriverHapticLog(const DriverHapticLogPacket& packet) {
+    std::string out;
+    out.reserve(192);
+    out += "{\"version\":";
+    out += std::to_string(kDriverLogProtocolVersion);
+    out += ",\"event\":\"haptic_vibration\",\"sequence\":";
+    out += std::to_string(packet.sequence);
+    out += ",\"device\":";
+    AppendEscaped(out, kDevices[DeviceSlot(packet.device)].id);
+    out += ",\"haptic\":{\"duration_seconds\":";
+    AppendFloat(out, packet.durationSeconds);
+    out += ",\"frequency_hz\":";
+    AppendFloat(out, packet.frequencyHz);
+    out += ",\"amplitude\":";
+    AppendFloat(out, packet.amplitude);
+    out += "}}";
+    return out;
+}
+
+bool ParseDriverHapticLog(std::string_view text, DriverHapticLogPacket& packet) {
+    packet = {};
+    const auto root = json::Parse(std::string(text));
+    if (!root || root->type != json::Type::Object) {
+        return false;
+    }
+
+    const json::Value* version = Required(*root, "version", json::Type::Number);
+    const json::Value* event = Required(*root, "event", json::Type::String);
+    const json::Value* sequence = Required(*root, "sequence", json::Type::Number);
+    const json::Value* device = Required(*root, "device", json::Type::String);
+    const json::Value* haptic = Required(*root, "haptic", json::Type::Object);
+    if (!version || version->number != kDriverLogProtocolVersion || !event ||
+        event->string != "haptic_vibration" || !sequence || !device || !haptic ||
+        !ParseNonNegativeInteger(*sequence, packet.sequence)) {
+        packet = {};
+        return false;
+    }
+
+    std::size_t slot = 0;
+    if (!DeviceSlotForId(device->string, slot)) {
+        packet = {};
+        return false;
+    }
+    packet.device = static_cast<DeviceIndex>(slot);
+
+    const json::Value* duration = Required(*haptic, "duration_seconds", json::Type::Number);
+    const json::Value* frequency = Required(*haptic, "frequency_hz", json::Type::Number);
+    const json::Value* amplitude = Required(*haptic, "amplitude", json::Type::Number);
+    // Bounds are generous on purpose: the driver forwards what SteamVR supplied
+    // rather than asserting a policy on it. Only nonsense is rejected.
+    if (!duration || !ParseFiniteFloat(*duration, 0.0f, kMaxHapticDurationSeconds, packet.durationSeconds) ||
+        !frequency || !ParseFiniteFloat(*frequency, 0.0f, kMaxHapticFrequencyHz, packet.frequencyHz) ||
+        !amplitude || !ParseFiniteFloat(*amplitude, 0.0f, 1.0f, packet.amplitude)) {
+        packet = {};
+        return false;
+    }
+    return true;
+}
+
+bool ParseDriverLogBytes(const char* data, int size, DriverLogEvent& event) {
+    event = {};
+    if (!data || size <= 0 || size > kMaxDriverLogPacketBytes) {
+        return false;
+    }
+    const std::string_view text(data, static_cast<std::size_t>(size));
+
+    // Dispatch on the event name so one group can carry several event shapes
+    // without a reader guessing which fields to expect.
+    const auto root = json::Parse(std::string(text));
+    if (!root || root->type != json::Type::Object) {
+        return false;
+    }
+    const json::Value* name = Required(*root, "event", json::Type::String);
+    if (!name) {
+        return false;
+    }
+    if (name->string == "command_processed") {
+        event.type = DriverLogEventType::CommandProcessed;
+        return ParseDriverCommandLog(text, event.command);
+    }
+    if (name->string == "haptic_vibration") {
+        event.type = DriverLogEventType::HapticVibration;
+        return ParseDriverHapticLog(text, event.haptic);
+    }
+    return false;
 }
 
 } // namespace anyadance

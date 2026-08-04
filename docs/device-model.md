@@ -30,7 +30,7 @@ anyadance_left_foot_001              generic tracker
 anyadance_right_foot_001             generic tracker
 ```
 
-The controllers advertise `knuckles` controller type and use Valve Index render models through `{indexcontroller}`. The input profile lives under the public `{anyadance}` resource namespace.
+The controllers advertise `knuckles` controller type and use Valve Index render models through `{indexcontroller}`. The input profile lives under the public `{anyadance}` resource namespace. They also expose an `/output/haptic` component so SteamVR routes haptic requests to them; the driver has no motor and plays nothing back, but reports each request on the driver log group (see [protocol.md](protocol.md)).
 
 ## T-Pose Constants
 

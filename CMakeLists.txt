@@ -92,6 +92,7 @@ if(ANYADANCE_BUILD_DRIVER)
     resolve_openvr()
     add_library(driver_anyadance SHARED
         src/driver/driver_factory.cpp
+        src/driver/driver_log_sender.cpp
         src/driver/log.cpp
         src/driver/server_driver.cpp
         src/driver/udp_pose_receiver.cpp

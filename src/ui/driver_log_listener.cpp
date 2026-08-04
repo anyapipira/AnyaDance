@@ -155,9 +155,11 @@ void DriverLogListener::Run(SOCKET socketHandle) {
             break;
         }
 
-        DriverCommandLogPacket packet;
-        if (ParseDriverCommandLogBytes(buffer.data(), size, packet) && m_callback) {
-            m_callback(std::move(packet));
+        // The group carries more than one event type, so dispatch on the event
+        // name rather than assuming a command report.
+        DriverLogEvent event;
+        if (ParseDriverLogBytes(buffer.data(), size, event) && m_callback) {
+            m_callback(std::move(event));
         }
     }
     closesocket(socketHandle);

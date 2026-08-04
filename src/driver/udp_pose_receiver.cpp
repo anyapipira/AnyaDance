@@ -3,6 +3,7 @@
 #include "core/constants.h"
 #include "core/driver_log_protocol.h"
 #include "core/protocol.h"
+#include "driver_log_sender.h"
 #include "log.h"
 
 #include <WinSock2.h>
@@ -17,91 +18,14 @@ constexpr int kSocketTimeoutMs = 100;
 
 class CommandLogSender {
 public:
-    ~CommandLogSender() { Stop(); }
-
-    void Stop() {
-        if (m_socket != INVALID_SOCKET) {
-            closesocket(m_socket);
-            m_socket = INVALID_SOCKET;
-        }
-    }
+    void Stop() { m_sender.Stop(); }
 
     bool Start(const DriverCommandLogConfig& config) {
-        if (!config.enabled) {
-            return false;
-        }
-        m_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        if (m_socket == INVALID_SOCKET) {
-            DriverLog("[anyadance] Failed to create command-log UDP socket\n");
-            return false;
-        }
-
-        u_long nonBlocking = 1;
-        if (ioctlsocket(m_socket, FIONBIO, &nonBlocking) == SOCKET_ERROR) {
-            DriverLog("[anyadance] Failed to make command-log socket non-blocking\n");
-            closesocket(m_socket);
-            m_socket = INVALID_SOCKET;
-            return false;
-        }
-
-        m_destination.sin_family = AF_INET;
-        m_destination.sin_port = htons(config.port);
-        if (InetPtonA(
-                AF_INET,
-                config.multicastGroup.c_str(),
-                &m_destination.sin_addr) != 1 ||
-            (ntohl(m_destination.sin_addr.s_addr) & 0xf0000000u) != 0xe0000000u) {
-            DriverLog(
-                "[anyadance] Invalid command-log IPv4 multicast group: %s\n",
-                config.multicastGroup.c_str());
-            closesocket(m_socket);
-            m_socket = INVALID_SOCKET;
-            return false;
-        }
-
-        in_addr loopbackInterface{};
-        if (InetPtonA(
-                AF_INET,
-                anyadance::kDriverLogMulticastInterface,
-                &loopbackInterface) != 1) {
-            DriverLog("[anyadance] Invalid command-log multicast interface\n");
-            closesocket(m_socket);
-            m_socket = INVALID_SOCKET;
-            return false;
-        }
-        if (setsockopt(
-                m_socket,
-                IPPROTO_IP,
-                IP_MULTICAST_IF,
-                reinterpret_cast<const char*>(&loopbackInterface),
-                sizeof(loopbackInterface)) == SOCKET_ERROR) {
-            DriverLog("[anyadance] Failed to select loopback for command-log multicast\n");
-            closesocket(m_socket);
-            m_socket = INVALID_SOCKET;
-            return false;
-        }
-
-        // Scope zero and an explicit loopback interface keep command telemetry
-        // on this machine while allowing every joined process to receive it.
-        const DWORD multicastTtl = 0;
-        if (setsockopt(
-                m_socket,
-                IPPROTO_IP,
-                IP_MULTICAST_TTL,
-                reinterpret_cast<const char*>(&multicastTtl),
-                sizeof(multicastTtl)) == SOCKET_ERROR) {
-            DriverLog("[anyadance] Failed to scope command-log multicast to this host\n");
-            closesocket(m_socket);
-            m_socket = INVALID_SOCKET;
-            return false;
-        }
-
-        DriverLog(
-            "[anyadance] Command logging multicasts on loopback to %s:%u "
-            "(best-effort, non-blocking)\n",
-            config.multicastGroup.c_str(),
-            config.port);
-        return true;
+        DriverLogSenderConfig senderConfig;
+        senderConfig.enabled = config.enabled;
+        senderConfig.multicastGroup = config.multicastGroup;
+        senderConfig.port = config.port;
+        return m_sender.Start(senderConfig, "Command logging");
     }
 
     void Report(
@@ -110,7 +34,7 @@ public:
         const sockaddr_in& sender,
         bool accepted,
         const anyadance::ParsedFrame& parsed) {
-        if (m_socket == INVALID_SOCKET || !data || size <= 0) {
+        if (!m_sender.IsOpen() || !data || size <= 0) {
             return;
         }
 
@@ -124,7 +48,7 @@ public:
         }
 
         anyadance::DriverCommandLogPacket packet;
-        packet.sequence = ++m_sequence;
+        packet.sequence = m_sender.NextSequence();
         char senderHost[INET_ADDRSTRLEN]{};
         if (!InetNtopA(AF_INET, &sender.sin_addr, senderHost, sizeof(senderHost))) {
             return;
@@ -159,19 +83,7 @@ public:
         packet.suppressed = m_suppressed;
         m_suppressed = 0;
 
-        const std::string encoded = anyadance::SerializeDriverCommandLog(packet);
-        if (encoded.size() > static_cast<std::size_t>(anyadance::kMaxDriverLogPacketBytes)) {
-            return;
-        }
-        // Telemetry is deliberately lossy. A full socket buffer or unreachable
-        // listener drops this report without slowing command processing.
-        sendto(
-            m_socket,
-            encoded.data(),
-            static_cast<int>(encoded.size()),
-            0,
-            reinterpret_cast<const sockaddr*>(&m_destination),
-            sizeof(m_destination));
+        m_sender.Send(anyadance::SerializeDriverCommandLog(packet));
     }
 
 private:
@@ -207,9 +119,7 @@ private:
         }
     }
 
-    SOCKET m_socket = INVALID_SOCKET;
-    sockaddr_in m_destination{};
-    std::uint64_t m_sequence = 0;
+    DriverLogSender m_sender;
     std::uint64_t m_suppressed = 0;
     bool m_hasLast = false;
     bool m_lastAccepted = false;

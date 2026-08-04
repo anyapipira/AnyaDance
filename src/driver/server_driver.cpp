@@ -1,6 +1,7 @@
 #include "server_driver.h"
 
 #include "core/constants.h"
+#include "core/driver_log_protocol.h"
 #include "log.h"
 
 #include <utility>
@@ -156,6 +157,15 @@ EVRInitError ServerDriver::Init(IVRDriverContext* pDriverContext) {
             configuredLogPort,
             anyadance::kDriverLogPort);
     }
+    // Haptic reports ride the same multicast group and port as command reports,
+    // so a listener joins one group to see both. This sender is separate only so
+    // the RunFrame thread never shares a socket with the UDP receive thread.
+    DriverLogSenderConfig hapticLog;
+    hapticLog.enabled = GetBoolSetting("haptic_log_enabled", true);
+    hapticLog.multicastGroup = commandLog.multicastGroup;
+    hapticLog.port = commandLog.port;
+    m_hapticLog.Start(hapticLog, "Haptic logging");
+
     m_poseReceiver->Start(anyadance::kUdpPort, std::move(commandLog));
 
     return VRInitError_None;
@@ -167,6 +177,7 @@ void ServerDriver::Cleanup() {
         m_poseReceiver->Stop();
         m_poseReceiver.reset();
     }
+    m_hapticLog.Stop();
     m_devices.clear();
     DriverLog_CleanupDriverLog();
     VR_CLEANUP_SERVER_DRIVER_CONTEXT();
@@ -176,7 +187,43 @@ const char* const* ServerDriver::GetInterfaceVersions() {
     return k_InterfaceVersions;
 }
 
+void ServerDriver::PollDriverEvents() {
+    // SteamVR queues events for this driver's devices. Drain the queue every
+    // frame: leaving it unread would let it grow, and haptic requests are the
+    // only entries this driver acts on today.
+    VREvent_t event{};
+    while (VRServerDriverHost()->PollNextEvent(&event, sizeof(event))) {
+        if (event.eventType == VREvent_Input_HapticVibration) {
+            ReportHaptic(event.data.hapticVibration);
+        }
+    }
+}
+
+void ServerDriver::ReportHaptic(const VREvent_HapticVibration_t& haptic) {
+    if (!m_hapticLog.IsOpen()) {
+        return;
+    }
+    // The event names a component handle, not a device, so map it back to the
+    // controller that owns it. An unknown handle is not ours to report.
+    for (const DeviceSlot& slot : m_devices) {
+        if (!slot.device ||
+            slot.device->GetHapticComponentHandle() != haptic.componentHandle ||
+            slot.device->GetHapticComponentHandle() == k_ulInvalidInputComponentHandle) {
+            continue;
+        }
+        anyadance::DriverHapticLogPacket packet;
+        packet.sequence = m_hapticLog.NextSequence();
+        packet.device = slot.device->GetDefinition().index;
+        packet.durationSeconds = haptic.fDurationSeconds;
+        packet.frequencyHz = haptic.fFrequency;
+        packet.amplitude = haptic.fAmplitude;
+        m_hapticLog.Send(anyadance::SerializeDriverHapticLog(packet));
+        return;
+    }
+}
+
 void ServerDriver::RunFrame() {
+    PollDriverEvents();
     for (DeviceSlot& slot : m_devices) {
         anyadance::PoseSample sample;
         const bool hasSample = m_poseReceiver && m_poseReceiver->TryGetLatest(slot.deviceId, sample);

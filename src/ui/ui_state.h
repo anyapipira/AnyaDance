@@ -198,7 +198,12 @@ public:
         const bool started = m_driverLogListener.Start(
             kDriverLogMulticastGroup,
             kDriverLogPort,
-            [this](DriverCommandLogPacket packet) {
+            [this](DriverLogEvent event) {
+                if (event.type == DriverLogEventType::HapticVibration) {
+                    OnDriverHaptic(event.haptic);
+                    return;
+                }
+                DriverCommandLogPacket& packet = event.command;
                 const std::string endpoint = packet.senderHost + ":" +
                     std::to_string(packet.senderPort);
                 std::string detail = packet.detail;
@@ -231,6 +236,28 @@ public:
 
     bool IsDriverLogMonitoring() const {
         return m_driverLogListener.IsRunning();
+    }
+
+    // A haptic pulse SteamVR asked a virtual controller to play. Nothing is
+    // played back; the row records what an external tool would act on. The
+    // result column names the device rather than a sender, since the request
+    // came from SteamVR rather than over the pose socket.
+    void OnDriverHaptic(const DriverHapticLogPacket& haptic) {
+        char summary[128];
+        std::snprintf(
+            summary,
+            sizeof(summary),
+            "%.3f s at %.1f Hz, amplitude %.2f; driver report #%llu",
+            static_cast<double>(haptic.durationSeconds),
+            static_cast<double>(haptic.frequencyHz),
+            static_cast<double>(haptic.amplitude),
+            static_cast<unsigned long long>(haptic.sequence));
+        std::lock_guard<std::mutex> logLock(m_logMutex);
+        m_log.Add(
+            "Haptic vibration",
+            kDevices[DeviceSlot(haptic.device)].id,
+            {},
+            summary);
     }
 
     // Resend a captured payload once over the same UDP socket and log the result.

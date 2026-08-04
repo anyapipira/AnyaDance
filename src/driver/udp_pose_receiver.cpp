@@ -44,7 +44,6 @@ public:
         }
 
         anyadance::DriverCommandLogPacket packet;
-        packet.envelope.sequence = m_sender.NextSequence();
         char senderHost[INET_ADDRSTRLEN]{};
         if (!InetNtopA(AF_INET, &sender.sin_addr, senderHost, sizeof(senderHost))) {
             return;
@@ -79,6 +78,12 @@ public:
         packet.envelope.suppressed = m_suppressed;
         m_suppressed = 0;
 
+        // Number the event as late as possible. Two threads send to this group,
+        // so every instruction between taking a number and handing the datagram
+        // to the socket is a window in which the two can leave in the wrong
+        // order. This narrows that window to the serialization call; it cannot
+        // close it, which is why receivers reorder by sequence.
+        packet.envelope.sequence = m_sender.NextSequence();
         m_sender.Send(anyadance::SerializeDriverCommandLog(packet));
     }
 

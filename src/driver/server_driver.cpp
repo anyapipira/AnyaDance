@@ -218,7 +218,6 @@ void ServerDriver::ReportHaptic(const VREvent_HapticVibration_t& haptic) {
             continue;
         }
         anyadance::DriverHapticLogPacket packet;
-        packet.envelope.sequence = m_hapticLog.NextSequence();
         packet.device = slot.device->GetDefinition().index;
         packet.durationSeconds = haptic.fDurationSeconds;
         packet.frequencyHz = haptic.fFrequency;
@@ -234,6 +233,10 @@ void ServerDriver::ReportHaptic(const VREvent_HapticVibration_t& haptic) {
             static_cast<double>(packet.frequencyHz),
             static_cast<double>(packet.amplitude));
         packet.envelope.detail = detail;
+        // Numbered last, for the reason given in the command reporter: the two
+        // sender threads share this counter, so the gap between numbering and
+        // sending is the window in which they can leave out of order.
+        packet.envelope.sequence = m_hapticLog.NextSequence();
         m_hapticLog.Send(anyadance::SerializeDriverHapticLog(packet));
         return;
     }

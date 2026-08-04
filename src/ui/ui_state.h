@@ -224,7 +224,8 @@ public:
                     endpoint,
                     std::move(packet.payload),
                     std::move(detail),
-                    packet.accepted);
+                    packet.accepted,
+                    packet.envelope.sequence);
             },
             error);
         if (!started) {
@@ -251,11 +252,12 @@ public:
         }
         detail += "driver report #" + std::to_string(haptic.envelope.sequence);
         std::lock_guard<std::mutex> logLock(m_logMutex);
-        m_log.Add(
+        m_log.AddDriverEvent(
             "Haptic vibration",
             kDevices[DeviceSlot(haptic.device)].id,
             {},
-            std::move(detail));
+            std::move(detail),
+            haptic.envelope.sequence);
     }
 
     // Resend a captured payload once over the same UDP socket and log the result.

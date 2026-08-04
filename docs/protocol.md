@@ -104,6 +104,38 @@ Alongside the envelope, each event carries fields specific to its type:
 | `command_processed` | `source`, `command` | [Driver Command Logging](#driver-command-logging) |
 | `haptic_vibration` | `device`, `haptic` | [Haptic Events](#haptic-events) |
 
+### Ordering And Delivery
+
+Delivery is plain UDP, so the transport guarantees nothing: datagrams may be
+lost, duplicated, or reordered. `sequence` is what makes that recoverable, and it
+is why it counts globally rather than per event type.
+
+The driver takes a sequence number as late as it can, immediately before handing
+the datagram to the socket. It cannot take one atomically with the send: two
+threads report on this group — the UDP receive thread for `command_processed` and
+SteamVR's `RunFrame` thread for `haptic_vibration` — and serializing them against
+each other would put a lock on both hot paths. So a small window remains in which
+two events can leave in the opposite order to their numbers, independent of
+anything the network does.
+
+A receiver is therefore expected to order by `sequence`, not by arrival:
+
+- **Reorder.** Hold or insert by `sequence` rather than appending on arrival. In
+  practice a late event is a few places behind, so a bounded window is enough;
+  the companion UI walks back up to 64 rows.
+- **Deduplicate.** A repeated `sequence` is a duplicated datagram, not a new
+  event. Drop it.
+- **Detect loss.** A missing `sequence` is a dropped datagram. Because the
+  counter is global, a gap is visible even to a receiver that filters for one
+  event type — the numbers it keeps are simply sparse. Distinguish that from
+  loss by tracking which numbers you filtered out yourself.
+- **Do not order by arrival time or by `detail`.** Only `sequence` reflects the
+  order the driver produced the events in.
+
+Nothing is retransmitted and no acknowledgement is read, so a lost event is gone.
+This is telemetry: it is designed to be dropped under pressure rather than to
+delay the driver.
+
 ### Schema Stability
 
 These rules are a contract. A receiver that follows them keeps working across

@@ -115,6 +115,11 @@ a root turns off fetching for that dependency.
   `DriverLogEventType::Unknown` with a valid envelope rather than failing,
   because receivers must be able to skip new event types. The schema contract
   published to receivers is in `docs/protocol.md` — keep it accurate.
+- UDP reorders, duplicates, and drops. Order driver events by `sequence`, never
+  by arrival: `UdpLog::InsertBySequence` places a late event within a bounded
+  window and drops a repeated one. Take the sequence number immediately before
+  sending — two threads share the counter, so anything between numbering and
+  `sendto` is a window in which events can leave out of order.
 - Haptic requests to the two controllers are reported as `haptic_vibration`,
   gated by `haptic_log_enabled` (default true); the `/output/haptic` component is
   always created, so the switch never changes what SteamVR sees. The driver

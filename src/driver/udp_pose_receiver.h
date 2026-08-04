@@ -3,18 +3,13 @@
 #include "core/constants.h"
 #include "core/pose_sample.h"
 #include "core/protocol.h"
+#include "driver_log_sender.h"
 
 #include <array>
 #include <atomic>
 #include <mutex>
 #include <string>
 #include <thread>
-
-struct DriverCommandLogConfig {
-    bool enabled = true;
-    std::string multicastGroup = anyadance::kDriverLogMulticastGroup;
-    unsigned short port = anyadance::kDriverLogPort;
-};
 
 class UdpPoseReceiver {
 public:
@@ -24,12 +19,12 @@ public:
     UdpPoseReceiver(const UdpPoseReceiver&) = delete;
     UdpPoseReceiver& operator=(const UdpPoseReceiver&) = delete;
 
-    bool Start(unsigned short port, DriverCommandLogConfig logConfig);
+    bool Start(unsigned short port, DriverLogSenderConfig logConfig);
     void Stop();
     bool TryGetLatest(const std::string& deviceId, anyadance::PoseSample& sample) const;
 
 private:
-    void Run(unsigned short port, DriverCommandLogConfig logConfig);
+    void Run(unsigned short port, DriverLogSenderConfig logConfig);
     bool StoreIfValid(const char* data, int size, anyadance::ParsedFrame& parsed);
 
     mutable std::mutex m_mutex;

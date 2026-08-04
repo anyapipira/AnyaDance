@@ -8,6 +8,7 @@ bool DriverLogSender::Start(const DriverLogSenderConfig& config, const char* pur
     if (!config.enabled) {
         return false;
     }
+    m_sequence = config.sequence;
     m_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (m_socket == INVALID_SOCKET) {
         DriverLog("[anyadance] Failed to create %s UDP socket\n", purpose);

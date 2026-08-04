@@ -60,6 +60,25 @@ const json::Value* Required(
     return value && value->type == type ? value : nullptr;
 }
 
+// Writes the fields common to every event, up to and including the opening of
+// the event-specific part. Every serializer starts here so the envelope cannot
+// diverge between event types.
+void AppendEnvelope(
+    std::string& out,
+    const char* eventName,
+    const DriverLogEnvelope& envelope) {
+    out += "{\"version\":";
+    out += std::to_string(kDriverLogProtocolVersion);
+    out += ",\"event\":";
+    AppendEscaped(out, eventName);
+    out += ",\"sequence\":";
+    out += std::to_string(envelope.sequence);
+    out += ",\"suppressed\":";
+    out += std::to_string(envelope.suppressed);
+    out += ",\"detail\":";
+    AppendEscaped(out, envelope.detail);
+}
+
 bool ParseNonNegativeInteger(const json::Value& value, std::uint64_t& result) {
     if (value.type != json::Type::Number || !std::isfinite(value.number) ||
         value.number < 0.0 || std::floor(value.number) != value.number ||
@@ -111,6 +130,36 @@ bool DeviceSlotForId(const std::string& id, std::size_t& slot) {
     return false;
 }
 
+// Validates the fields common to every event. Each event type calls this before
+// reading its own, so all of them agree on the envelope and reject the same
+// malformed input.
+bool ParseEnvelope(
+    const json::Value& root,
+    const char* expectedEvent,
+    DriverLogEnvelope& envelope) {
+    envelope = {};
+    const json::Value* version = Required(root, "version", json::Type::Number);
+    const json::Value* event = Required(root, "event", json::Type::String);
+    const json::Value* sequence = Required(root, "sequence", json::Type::Number);
+    const json::Value* detail = Required(root, "detail", json::Type::String);
+    if (!version || version->number != kDriverLogProtocolVersion || !event ||
+        event->string != expectedEvent || !sequence || !detail ||
+        !ParseNonNegativeInteger(*sequence, envelope.sequence)) {
+        envelope = {};
+        return false;
+    }
+
+    // Optional so a version 1 sender that predates hold suppression still
+    // parses; absent means the sender reported every event it produced.
+    const json::Value* suppressed = root.Find("suppressed");
+    if (suppressed && !ParseNonNegativeInteger(*suppressed, envelope.suppressed)) {
+        envelope = {};
+        return false;
+    }
+    envelope.detail = detail->string;
+    return true;
+}
+
 bool ParseDeviceArray(
     const json::Value& value,
     std::array<bool, kDevices.size()>& present) {
@@ -136,12 +185,7 @@ bool ParseDeviceArray(
 std::string SerializeDriverCommandLog(const DriverCommandLogPacket& packet) {
     std::string out;
     out.reserve(packet.payload.size() + 384);
-    out += "{\"version\":";
-    out += std::to_string(kDriverLogProtocolVersion);
-    out += ",\"event\":\"command_processed\",\"sequence\":";
-    out += std::to_string(packet.sequence);
-    out += ",\"suppressed\":";
-    out += std::to_string(packet.suppressed);
+    AppendEnvelope(out, "command_processed", packet.envelope);
     out += ",\"source\":{\"host\":";
     AppendEscaped(out, packet.senderHost);
     out += ",\"port\":";
@@ -156,36 +200,22 @@ std::string SerializeDriverCommandLog(const DriverCommandLogPacket& packet) {
     AppendDeviceArray(out, packet.yClamped);
     out += ",\"payload\":";
     AppendEscaped(out, packet.payload);
-    out += "},\"detail\":";
-    AppendEscaped(out, packet.detail);
-    out.push_back('}');
+    out += "}}";
     return out;
 }
 
-bool ParseDriverCommandLog(std::string_view text, DriverCommandLogPacket& packet) {
+// Internal: the caller has already parsed the datagram and dispatched on its
+// event name, so these read a known-good root rather than re-parsing text.
+static bool ParseDriverCommandLogRoot(const json::Value& root, DriverCommandLogPacket& packet) {
     packet = {};
-    const auto root = json::Parse(std::string(text));
-    if (!root || root->type != json::Type::Object) {
-        return false;
-    }
-
-    const json::Value* version = Required(*root, "version", json::Type::Number);
-    const json::Value* event = Required(*root, "event", json::Type::String);
-    const json::Value* sequence = Required(*root, "sequence", json::Type::Number);
-    const json::Value* source = Required(*root, "source", json::Type::Object);
-    const json::Value* command = Required(*root, "command", json::Type::Object);
-    const json::Value* detail = Required(*root, "detail", json::Type::String);
-    if (!version || version->number != kDriverLogProtocolVersion || !event ||
-        event->string != "command_processed" || !sequence || !source ||
-        !command || !detail || !ParseNonNegativeInteger(*sequence, packet.sequence)) {
+    if (!ParseEnvelope(root, "command_processed", packet.envelope)) {
         packet = {};
         return false;
     }
 
-    // Optional so a version 1 sender that predates hold suppression still
-    // parses; absent means the sender reported every command it processed.
-    const json::Value* suppressed = root->Find("suppressed");
-    if (suppressed && !ParseNonNegativeInteger(*suppressed, packet.suppressed)) {
+    const json::Value* source = Required(root, "source", json::Type::Object);
+    const json::Value* command = Required(root, "command", json::Type::Object);
+    if (!source || !command) {
         packet = {};
         return false;
     }
@@ -213,8 +243,11 @@ bool ParseDriverCommandLog(std::string_view text, DriverCommandLogPacket& packet
     packet.senderPort = static_cast<unsigned short>(parsedPort);
     packet.accepted = accepted->boolean;
     packet.payload = payload->string;
-    packet.detail = detail->string;
-    return static_cast<int>(packet.payload.size()) == packet.receivedBytes;
+    if (static_cast<int>(packet.payload.size()) != packet.receivedBytes) {
+        packet = {};
+        return false;
+    }
+    return true;
 }
 
 bool ParseDriverCommandLogBytes(const char* data, int size, DriverCommandLogPacket& packet) {
@@ -228,11 +261,8 @@ bool ParseDriverCommandLogBytes(const char* data, int size, DriverCommandLogPack
 
 std::string SerializeDriverHapticLog(const DriverHapticLogPacket& packet) {
     std::string out;
-    out.reserve(192);
-    out += "{\"version\":";
-    out += std::to_string(kDriverLogProtocolVersion);
-    out += ",\"event\":\"haptic_vibration\",\"sequence\":";
-    out += std::to_string(packet.sequence);
+    out.reserve(256);
+    AppendEnvelope(out, "haptic_vibration", packet.envelope);
     out += ",\"device\":";
     AppendEscaped(out, kDevices[DeviceSlot(packet.device)].id);
     out += ",\"haptic\":{\"duration_seconds\":";
@@ -245,21 +275,16 @@ std::string SerializeDriverHapticLog(const DriverHapticLogPacket& packet) {
     return out;
 }
 
-bool ParseDriverHapticLog(std::string_view text, DriverHapticLogPacket& packet) {
+static bool ParseDriverHapticLogRoot(const json::Value& root, DriverHapticLogPacket& packet) {
     packet = {};
-    const auto root = json::Parse(std::string(text));
-    if (!root || root->type != json::Type::Object) {
+    if (!ParseEnvelope(root, "haptic_vibration", packet.envelope)) {
+        packet = {};
         return false;
     }
 
-    const json::Value* version = Required(*root, "version", json::Type::Number);
-    const json::Value* event = Required(*root, "event", json::Type::String);
-    const json::Value* sequence = Required(*root, "sequence", json::Type::Number);
-    const json::Value* device = Required(*root, "device", json::Type::String);
-    const json::Value* haptic = Required(*root, "haptic", json::Type::Object);
-    if (!version || version->number != kDriverLogProtocolVersion || !event ||
-        event->string != "haptic_vibration" || !sequence || !device || !haptic ||
-        !ParseNonNegativeInteger(*sequence, packet.sequence)) {
+    const json::Value* device = Required(root, "device", json::Type::String);
+    const json::Value* haptic = Required(root, "haptic", json::Type::Object);
+    if (!device || !haptic) {
         packet = {};
         return false;
     }
@@ -285,16 +310,46 @@ bool ParseDriverHapticLog(std::string_view text, DriverHapticLogPacket& packet) 
     return true;
 }
 
+bool ParseDriverCommandLog(std::string_view text, DriverCommandLogPacket& packet) {
+    packet = {};
+    const auto root = json::Parse(std::string(text));
+    if (!root || root->type != json::Type::Object) {
+        return false;
+    }
+    return ParseDriverCommandLogRoot(*root, packet);
+}
+
+bool ParseDriverHapticLog(std::string_view text, DriverHapticLogPacket& packet) {
+    packet = {};
+    const auto root = json::Parse(std::string(text));
+    if (!root || root->type != json::Type::Object) {
+        return false;
+    }
+    return ParseDriverHapticLogRoot(*root, packet);
+}
+
+const char* DriverLogEventName(DriverLogEventType type) {
+    switch (type) {
+    case DriverLogEventType::CommandProcessed:
+        return "command_processed";
+    case DriverLogEventType::HapticVibration:
+        return "haptic_vibration";
+    case DriverLogEventType::Unknown:
+        break;
+    }
+    return "";
+}
+
 bool ParseDriverLogBytes(const char* data, int size, DriverLogEvent& event) {
     event = {};
     if (!data || size <= 0 || size > kMaxDriverLogPacketBytes) {
         return false;
     }
-    const std::string_view text(data, static_cast<std::size_t>(size));
 
-    // Dispatch on the event name so one group can carry several event shapes
-    // without a reader guessing which fields to expect.
-    const auto root = json::Parse(std::string(text));
+    // Parse once and dispatch on the event name, so one group can carry several
+    // event shapes without a reader guessing which fields to expect and without
+    // re-parsing the same datagram per candidate type.
+    const auto root = json::Parse(std::string(data, static_cast<std::size_t>(size)));
     if (!root || root->type != json::Type::Object) {
         return false;
     }
@@ -302,15 +357,36 @@ bool ParseDriverLogBytes(const char* data, int size, DriverLogEvent& event) {
     if (!name) {
         return false;
     }
-    if (name->string == "command_processed") {
+    event.name = name->string;
+
+    if (name->string == DriverLogEventName(DriverLogEventType::CommandProcessed)) {
         event.type = DriverLogEventType::CommandProcessed;
-        return ParseDriverCommandLog(text, event.command);
+        if (!ParseDriverCommandLogRoot(*root, event.command)) {
+            event = {};
+            return false;
+        }
+        event.envelope = event.command.envelope;
+        return true;
     }
-    if (name->string == "haptic_vibration") {
+    if (name->string == DriverLogEventName(DriverLogEventType::HapticVibration)) {
         event.type = DriverLogEventType::HapticVibration;
-        return ParseDriverHapticLog(text, event.haptic);
+        if (!ParseDriverHapticLogRoot(*root, event.haptic)) {
+            event = {};
+            return false;
+        }
+        event.envelope = event.haptic.envelope;
+        return true;
     }
-    return false;
+
+    // A well-formed event of a type this build does not know. The envelope is
+    // common to every event, so it still parses and the reader can skip or
+    // display the event generically instead of treating the stream as corrupt.
+    event.type = DriverLogEventType::Unknown;
+    if (!ParseEnvelope(*root, name->string.c_str(), event.envelope)) {
+        event = {};
+        return false;
+    }
+    return true;
 }
 
 } // namespace anyadance

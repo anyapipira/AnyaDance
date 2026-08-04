@@ -91,18 +91,26 @@ $receiver = {
 
             try {
                 $event = $text | ConvertFrom-Json -ErrorAction Stop
-                # The group carries more than one event type, so dispatch on the
-                # event name instead of assuming a command report.
+
+                # Filter on the event name. Every event carries the same envelope
+                # (version, event, sequence, suppressed, detail), so an event this
+                # script does not know is still worth showing rather than warning
+                # about -- the group is designed to grow new event types.
+                if ($event.event -ne "command_processed" -and $event.event -ne "haptic_vibration") {
+                    Write-Host (
+                        "[{0:HH:mm:ss.fff}] {1} {2} #{3} - {4}" -f
+                        [DateTime]::Now, $ListenerName, $event.event, $event.sequence, $event.detail)
+                    continue
+                }
+
                 if ($event.event -eq "haptic_vibration") {
                     Write-Host (
-                        "[{0:HH:mm:ss.fff}] {1} haptic #{2} {3} - {4:N3} s at {5:N1} Hz, amplitude {6:N2}" -f
+                        "[{0:HH:mm:ss.fff}] {1} haptic #{2} {3} - {4}" -f
                         [DateTime]::Now,
                         $ListenerName,
                         $event.sequence,
                         $event.device,
-                        $event.haptic.duration_seconds,
-                        $event.haptic.frequency_hz,
-                        $event.haptic.amplitude)
+                        $event.detail)
                     continue
                 }
                 $result = if ($event.command.accepted) { "accepted" } else { "rejected" }

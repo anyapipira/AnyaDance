@@ -106,12 +106,19 @@ a root turns off fetching for that dependency.
   and non-blocking. When the UI joins that group, driver reports are the source
   of truth for successful commands;
   keep UI-side successful-send rows suppressed to avoid duplicates.
-- The driver log group carries more than one event type. Dispatch on the `event`
-  field (`ParseDriverLogBytes`) rather than assuming a command report. Haptic
-  requests to the two controllers are reported as `haptic_vibration`, gated by
-  `haptic_log_enabled` (default true); the `/output/haptic` component is always
-  created, so the switch never changes what SteamVR sees. The driver observes
-  haptics only — it has no motor and plays nothing back.
+- The driver log group carries more than one event type. Every event shares the
+  `DriverLogEnvelope` (`version`, `event`, `sequence`, `suppressed`, `detail`),
+  serialized by `AppendEnvelope` and validated by `ParseEnvelope` — add new event
+  types through those, never by hand, or the envelope drifts. `sequence` is
+  global across all events and all sender threads, not per type. Dispatch with
+  `ParseDriverLogBytes`; an event name it does not know parses as
+  `DriverLogEventType::Unknown` with a valid envelope rather than failing,
+  because receivers must be able to skip new event types. The schema contract
+  published to receivers is in `docs/protocol.md` — keep it accurate.
+- Haptic requests to the two controllers are reported as `haptic_vibration`,
+  gated by `haptic_log_enabled` (default true); the `/output/haptic` component is
+  always created, so the switch never changes what SteamVR sees. The driver
+  observes haptics only — it has no motor and plays nothing back.
 - The driver reports a command only when it differs from the last reported one
   (`SamePoseCommand`), because a held pose repeats at the stream rate. Keep this
   a change filter, not a rate limit: every distinct command still goes out, and

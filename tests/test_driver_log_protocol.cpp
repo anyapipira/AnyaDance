@@ -12,8 +12,8 @@ void TestDriverHapticLog();
 
 void TestDriverLogProtocol() {
     DriverCommandLogPacket source;
-    source.sequence = 42;
-    source.suppressed = 613;
+    source.envelope.sequence = 42;
+    source.envelope.suppressed = 613;
     source.senderHost = "127.0.0.1";
     source.senderPort = 54321;
     source.accepted = true;
@@ -22,13 +22,13 @@ void TestDriverLogProtocol() {
     source.yClamped[DeviceSlot(DeviceIndex::Hmd)] = true;
     source.payload = "{\"version\":1,\"note\":\"line\\nquote \\\"\"}";
     source.receivedBytes = static_cast<int>(source.payload.size());
-    source.detail = "accepted 2 device entries";
+    source.envelope.detail = "accepted 2 device entries";
 
     const std::string encoded = SerializeDriverCommandLog(source);
     DriverCommandLogPacket parsed;
     EXPECT_TRUE(ParseDriverCommandLog(encoded, parsed));
-    EXPECT_TRUE(parsed.sequence == 42);
-    EXPECT_TRUE(parsed.suppressed == 613);
+    EXPECT_TRUE(parsed.envelope.sequence == 42);
+    EXPECT_TRUE(parsed.envelope.suppressed == 613);
     EXPECT_TRUE(parsed.senderHost == "127.0.0.1");
     EXPECT_TRUE(parsed.senderPort == 54321);
     EXPECT_TRUE(parsed.accepted);
@@ -36,7 +36,7 @@ void TestDriverLogProtocol() {
     EXPECT_TRUE(parsed.devices[DeviceSlot(DeviceIndex::LeftController)]);
     EXPECT_TRUE(parsed.yClamped[DeviceSlot(DeviceIndex::Hmd)]);
     EXPECT_TRUE(parsed.payload == source.payload);
-    EXPECT_TRUE(parsed.detail == source.detail);
+    EXPECT_TRUE(parsed.envelope.detail == source.envelope.detail);
 
     std::string wrongVersion = encoded;
     wrongVersion.replace(wrongVersion.find("\"version\":1"), 11, "\"version\":2");
@@ -57,7 +57,7 @@ void TestDriverLogProtocol() {
         std::string(",\"suppressed\":613").size(),
         "");
     EXPECT_TRUE(ParseDriverCommandLog(withoutSuppressed, parsed));
-    EXPECT_TRUE(parsed.suppressed == 0);
+    EXPECT_TRUE(parsed.envelope.suppressed == 0);
 
     std::string negativeSuppressed = encoded;
     negativeSuppressed.replace(
@@ -93,7 +93,7 @@ void TestDriverLogProtocol() {
     DriverLogEvent event;
     EXPECT_TRUE(ParseDriverLogBytes(encoded.data(), static_cast<int>(encoded.size()), event));
     EXPECT_TRUE(event.type == DriverLogEventType::CommandProcessed);
-    EXPECT_TRUE(event.command.sequence == 42);
+    EXPECT_TRUE(event.command.envelope.sequence == 42);
 
     TestDriverHapticLog();
 }
@@ -102,16 +102,18 @@ namespace {
 
 void TestDriverHapticLog() {
     DriverHapticLogPacket source;
-    source.sequence = 7;
+    source.envelope.sequence = 7;
     source.device = DeviceIndex::RightController;
     source.durationSeconds = 0.125f;
     source.frequencyHz = 160.5f;
     source.amplitude = 0.75f;
 
+    source.envelope.detail = "0.125 s at 160.5 Hz, amplitude 0.75";
+
     const std::string encoded = SerializeDriverHapticLog(source);
     DriverHapticLogPacket parsed;
     EXPECT_TRUE(ParseDriverHapticLog(encoded, parsed));
-    EXPECT_TRUE(parsed.sequence == 7);
+    EXPECT_TRUE(parsed.envelope.sequence == 7);
     EXPECT_TRUE(parsed.device == DeviceIndex::RightController);
     EXPECT_NEAR(parsed.durationSeconds, 0.125f, 0.000001f);
     EXPECT_NEAR(parsed.frequencyHz, 160.5f, 0.0001f);
@@ -127,10 +129,40 @@ void TestDriverHapticLog() {
     DriverCommandLogPacket asCommand;
     EXPECT_FALSE(ParseDriverCommandLog(encoded, asCommand));
 
-    const std::string unknownEvent =
-        "{\"version\":1,\"event\":\"future_event\",\"sequence\":1}";
+    // The envelope arrives on every event, so a reader can render a haptic event
+    // without knowing its shape.
+    EXPECT_TRUE(event.envelope.sequence == 7);
+    EXPECT_TRUE(event.name == "haptic_vibration");
+
+    // Forward compatibility: an event type this build does not know is still a
+    // well-formed event, not a corrupt stream. It parses, reports its name and
+    // envelope, and a reader can filter it out on `event` without guessing.
+    const std::string futureEvent =
+        "{\"version\":1,\"event\":\"future_event\",\"sequence\":9,"
+        "\"suppressed\":0,\"detail\":\"something new\",\"future\":{\"x\":1}}";
+    EXPECT_TRUE(ParseDriverLogBytes(
+        futureEvent.data(), static_cast<int>(futureEvent.size()), event));
+    EXPECT_TRUE(event.type == DriverLogEventType::Unknown);
+    EXPECT_TRUE(event.name == "future_event");
+    EXPECT_TRUE(event.envelope.sequence == 9);
+    EXPECT_TRUE(event.envelope.detail == "something new");
+
+    // A malformed envelope is still rejected, whatever the event name claims.
+    const std::string futureWithoutEnvelope =
+        "{\"version\":1,\"event\":\"future_event\",\"sequence\":9}";
     EXPECT_FALSE(ParseDriverLogBytes(
-        unknownEvent.data(), static_cast<int>(unknownEvent.size()), event));
+        futureWithoutEnvelope.data(), static_cast<int>(futureWithoutEnvelope.size()), event));
+
+    const std::string futureWrongVersion =
+        "{\"version\":2,\"event\":\"future_event\",\"sequence\":9,\"detail\":\"\"}";
+    EXPECT_FALSE(ParseDriverLogBytes(
+        futureWrongVersion.data(), static_cast<int>(futureWrongVersion.size()), event));
+
+    // Every known event type round-trips its wire name.
+    EXPECT_TRUE(std::string(DriverLogEventName(DriverLogEventType::CommandProcessed)) ==
+        "command_processed");
+    EXPECT_TRUE(std::string(DriverLogEventName(DriverLogEventType::HapticVibration)) ==
+        "haptic_vibration");
 
     std::string unknownDevice = encoded;
     unknownDevice.replace(

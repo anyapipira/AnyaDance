@@ -4,6 +4,7 @@
 #include "core/driver_log_protocol.h"
 #include "log.h"
 
+#include <cstdio>
 #include <utility>
 
 using namespace vr;
@@ -143,7 +144,11 @@ EVRInitError ServerDriver::Init(IVRDriverContext* pDriverContext) {
     }
 
     m_poseReceiver = std::make_unique<UdpPoseReceiver>();
-    DriverCommandLogConfig commandLog;
+    // Both reporting paths share one counter so `sequence` numbers every event
+    // on the group, whatever its type and whichever thread produced it.
+    m_logSequence = MakeDriverLogSequence();
+    DriverLogSenderConfig commandLog;
+    commandLog.sequence = m_logSequence;
     commandLog.enabled = GetBoolSetting("command_log_enabled", true);
     commandLog.multicastGroup = GetStringSetting(
         "command_log_multicast_group",
@@ -161,6 +166,7 @@ EVRInitError ServerDriver::Init(IVRDriverContext* pDriverContext) {
     // so a listener joins one group to see both. This sender is separate only so
     // the RunFrame thread never shares a socket with the UDP receive thread.
     DriverLogSenderConfig hapticLog;
+    hapticLog.sequence = m_logSequence;
     hapticLog.enabled = GetBoolSetting("haptic_log_enabled", true);
     hapticLog.multicastGroup = commandLog.multicastGroup;
     hapticLog.port = commandLog.port;
@@ -212,11 +218,22 @@ void ServerDriver::ReportHaptic(const VREvent_HapticVibration_t& haptic) {
             continue;
         }
         anyadance::DriverHapticLogPacket packet;
-        packet.sequence = m_hapticLog.NextSequence();
+        packet.envelope.sequence = m_hapticLog.NextSequence();
         packet.device = slot.device->GetDefinition().index;
         packet.durationSeconds = haptic.fDurationSeconds;
         packet.frequencyHz = haptic.fFrequency;
         packet.amplitude = haptic.fAmplitude;
+        // Every event carries a ready-made summary so a reader can render it
+        // without knowing this event's shape.
+        char detail[96];
+        std::snprintf(
+            detail,
+            sizeof(detail),
+            "%.3f s at %.1f Hz, amplitude %.2f",
+            static_cast<double>(packet.durationSeconds),
+            static_cast<double>(packet.frequencyHz),
+            static_cast<double>(packet.amplitude));
+        packet.envelope.detail = detail;
         m_hapticLog.Send(anyadance::SerializeDriverHapticLog(packet));
         return;
     }

@@ -206,15 +206,15 @@ public:
                 DriverCommandLogPacket& packet = event.command;
                 const std::string endpoint = packet.senderHost + ":" +
                     std::to_string(packet.senderPort);
-                std::string detail = packet.detail;
+                std::string detail = packet.envelope.detail;
                 if (!detail.empty()) {
                     detail += "; ";
                 }
-                detail += "driver report #" + std::to_string(packet.sequence);
+                detail += "driver report #" + std::to_string(packet.envelope.sequence);
                 // The driver reports only when a command changes, so this says
                 // how long the previous pose was held before this one arrived.
-                if (packet.suppressed > 0) {
-                    detail += "; " + std::to_string(packet.suppressed) +
+                if (packet.envelope.suppressed > 0) {
+                    detail += "; " + std::to_string(packet.envelope.suppressed) +
                         " identical commands held before this one";
                 }
                 std::lock_guard<std::mutex> logLock(m_logMutex);
@@ -243,21 +243,19 @@ public:
     // result column names the device rather than a sender, since the request
     // came from SteamVR rather than over the pose socket.
     void OnDriverHaptic(const DriverHapticLogPacket& haptic) {
-        char summary[128];
-        std::snprintf(
-            summary,
-            sizeof(summary),
-            "%.3f s at %.1f Hz, amplitude %.2f; driver report #%llu",
-            static_cast<double>(haptic.durationSeconds),
-            static_cast<double>(haptic.frequencyHz),
-            static_cast<double>(haptic.amplitude),
-            static_cast<unsigned long long>(haptic.sequence));
+        // The summary rides in the envelope, so this renders it the same way the
+        // command rows do instead of re-deriving it from the typed fields.
+        std::string detail = haptic.envelope.detail;
+        if (!detail.empty()) {
+            detail += "; ";
+        }
+        detail += "driver report #" + std::to_string(haptic.envelope.sequence);
         std::lock_guard<std::mutex> logLock(m_logMutex);
         m_log.Add(
             "Haptic vibration",
             kDevices[DeviceSlot(haptic.device)].id,
             {},
-            summary);
+            std::move(detail));
     }
 
     // Resend a captured payload once over the same UDP socket and log the result.

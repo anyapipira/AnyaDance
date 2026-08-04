@@ -37,6 +37,7 @@ private:
 
     std::vector<DeviceSlot> m_devices;
     std::unique_ptr<UdpPoseReceiver> m_poseReceiver;
+    DriverLogSequence m_logSequence;
     DriverLogSender m_hapticLog;
     bool m_hasVirtualHmd = false;
 };

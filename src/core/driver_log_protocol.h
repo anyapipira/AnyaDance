@@ -9,13 +9,26 @@
 
 namespace anyadance {
 
+// Fields every event on the driver log group carries, whatever its type. They
+// are serialized and validated in one place, so a new event type cannot drift
+// from the others, and a reader can present any event without knowing its shape.
+struct DriverLogEnvelope {
+    // Monotonic across every event the driver emits, not per event type, so the
+    // reports of all types share one order. Restarts at driver startup.
+    std::uint64_t sequence = 0;
+    // Identical events the driver absorbed between the previous report of this
+    // type and this one. Non-zero means a repeat was held rather than the stream
+    // stalling. Event types that never suppress always report 0.
+    std::uint64_t suppressed = 0;
+    // Compact English summary, always present so a reader can render any event
+    // without special-casing its type.
+    std::string detail;
+};
+
 // One best-effort telemetry event emitted after the driver parses a UDP
 // command. The original command remains available for inspection and resend.
 struct DriverCommandLogPacket {
-    std::uint64_t sequence = 0;
-    // Identical commands the driver absorbed between the previous report and
-    // this one. Non-zero means a pose was held rather than the stream stalling.
-    std::uint64_t suppressed = 0;
+    DriverLogEnvelope envelope;
     std::string senderHost;
     unsigned short senderPort = 0;
     int receivedBytes = 0;
@@ -23,29 +36,41 @@ struct DriverCommandLogPacket {
     std::array<bool, kDevices.size()> devices{};
     std::array<bool, kDevices.size()> yClamped{};
     std::string payload;
-    std::string detail;
 };
 
 // One haptic pulse SteamVR asked a virtual controller to play. The driver only
 // observes and reports it; nothing is played back, and no acknowledgement is
 // expected. Values are passed through as SteamVR supplied them.
 struct DriverHapticLogPacket {
-    std::uint64_t sequence = 0;
+    DriverLogEnvelope envelope;
     DeviceIndex device = DeviceIndex::LeftController;
     float durationSeconds = 0.0f;
     float frequencyHz = 0.0f;
     float amplitude = 0.0f;
 };
 
-// Which event a datagram on the driver log group carries. Readers dispatch on
-// this so a stream carrying more than one event type stays parseable.
+// Which event a datagram on the driver log group carries. The wire form is the
+// `event` string; this is its parsed form. Readers filter and dispatch on it.
+//
+// Unknown means the datagram is a well-formed event of a type this build does
+// not know. That is not an error: the group is designed to grow new event types,
+// and a reader must skip what it does not handle rather than treat the stream as
+// corrupt. The envelope and `name` are still populated, so an unknown event can
+// be logged or displayed generically.
 enum class DriverLogEventType {
+    Unknown,
     CommandProcessed,
     HapticVibration,
 };
 
+// Wire name for an event type. Empty for Unknown, whose name lives in the parsed
+// event itself.
+const char* DriverLogEventName(DriverLogEventType type);
+
 struct DriverLogEvent {
-    DriverLogEventType type = DriverLogEventType::CommandProcessed;
+    DriverLogEventType type = DriverLogEventType::Unknown;
+    std::string name;             // the `event` string exactly as received
+    DriverLogEnvelope envelope;   // always populated for a well-formed event
     DriverCommandLogPacket command;  // valid when type is CommandProcessed
     DriverHapticLogPacket haptic;    // valid when type is HapticVibration
 };

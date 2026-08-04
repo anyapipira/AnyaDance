@@ -32,9 +32,10 @@ logging version: 1
 maximum logging datagram size: 65507 bytes
 ```
 
-The same group also carries haptic events (see [Haptic Events](#haptic-events)).
-A reader must dispatch on the `event` field rather than assume every datagram is
-a command report.
+The same group carries more than one kind of event. Every datagram shares a
+common envelope and is identified by its `event` field, which is the field a
+receiver filters on. See [Event Schema](#event-schema) for the envelope, the
+event registry, and the compatibility rules that keep both stable.
 
 The logging group is independent of the command receiver. Configure it in
 the `driver_anyadance` section of `steamvr.vrsettings` and restart SteamVR to
@@ -72,6 +73,62 @@ The included PowerShell listener is a working reference implementation:
 .\scripts\listen_driver_log.ps1 -Validate -ListenerCount 3
 ```
 
+## Event Schema
+
+Every datagram on the group is one event. All events share this envelope,
+whatever their type, so a receiver can identify, filter, order, and display any
+event — including one it does not recognize — without knowing its shape:
+
+```json
+{
+  "version": 1,
+  "event": "<event name>",
+  "sequence": 42,
+  "suppressed": 0,
+  "detail": "compact English summary"
+}
+```
+
+| Envelope field | Type | Meaning |
+| --- | --- | --- |
+| `version` | Number | Driver logging protocol version. Version 1 is current. An event whose `version` a receiver does not know must be ignored. |
+| `event` | String | **The field to filter on.** Names the event type and therefore the shape of the type-specific fields alongside the envelope. |
+| `sequence` | Number | Monotonic across *every* event the driver emits, not per event type, so events of all types share one order. Restarts at driver startup. A gap means a datagram was lost, or an event type was filtered out upstream. |
+| `suppressed` | Number | Identical events absorbed between the previous report *of the same type* and this one. Optional; absent means `0`. Event types that never suppress always report `0`. |
+| `detail` | String | Compact English summary of the event, always present, so a receiver can render any event as one line without decoding its type-specific fields. Human-readable only — never parse it. |
+
+Alongside the envelope, each event carries fields specific to its type:
+
+| `event` | Type-specific fields | Described in |
+| --- | --- | --- |
+| `command_processed` | `source`, `command` | [Driver Command Logging](#driver-command-logging) |
+| `haptic_vibration` | `device`, `haptic` | [Haptic Events](#haptic-events) |
+
+### Schema Stability
+
+These rules are a contract. A receiver that follows them keeps working across
+AnyaDance releases without changes:
+
+- **Filter on `event`.** It is the only field that determines the rest of the
+  shape. Do not infer the type from the presence of another field.
+- **Ignore unknown `event` values.** New event types may be added to this group
+  in any release. An unrecognized event is a normal event a receiver does not
+  handle, not a corrupt datagram or a protocol error. It still carries the full
+  envelope, so it can be logged or displayed generically.
+- **Ignore unknown fields.** New fields may be added to the envelope or to an
+  existing event's type-specific object. A receiver must not fail on them.
+- **Within a `version`, existing fields do not change.** A field's name, type,
+  and meaning are fixed once released. Removing a field, repurposing one, or
+  narrowing what it can hold requires a new `version`.
+- **Absent optional fields mean their documented default**, not an error.
+- **Do not parse `detail`.** Its wording is not part of the contract and may be
+  reworded at any time. Read the type-specific fields instead.
+
+The reference listener in `scripts/listen_driver_log.ps1` follows these rules and
+is the shortest working example.
+
+### `command_processed`
+
 Each packet uses this shape:
 
 ```json
@@ -80,6 +137,7 @@ Each packet uses this shape:
   "event": "command_processed",
   "sequence": 42,
   "suppressed": 613,
+  "detail": "accepted 2 device entries; clamped Y for 1",
   "source": {
     "host": "127.0.0.1",
     "port": 54321
@@ -91,17 +149,17 @@ Each packet uses this shape:
     "devices": ["hmd", "left_controller"],
     "y_clamped": ["hmd"],
     "payload": "{\"version\":1,...}"
-  },
-  "detail": "accepted 2 device entries; clamped Y for 1"
+  }
 }
 ```
 
+The envelope fields are described in [Event Schema](#event-schema); for this
+event `suppressed` counts identical commands absorbed since the previous
+`command_processed` report, and `detail` summarizes the processing outcome. The
+type-specific fields are:
+
 | Field | Meaning |
 | --- | --- |
-| `version` | Driver logging protocol version. Version 1 is current. |
-| `event` | Event type. `command_processed` for this shape; see [Haptic Events](#haptic-events) for `haptic_vibration`. Dispatch on this field. |
-| `sequence` | Monotonic report number for the current driver receiver lifetime. It restarts at driver startup. Reports are numbered, not commands, so gaps do not appear when repeats are suppressed. |
-| `suppressed` | Identical commands the driver absorbed between the previous report and this one. `0` means the previous command was not repeated. Optional: a sender that reports every command may omit it, and a reader that omits it treats it as `0`. |
 | `source.host`, `source.port` | Endpoint that sent the original pose datagram to port `39570`. |
 | `command.protocol` | Command protocol name; version 1 uses `pose_frame`. |
 | `command.bytes` | Byte length of the original command datagram. |
@@ -109,7 +167,6 @@ Each packet uses this shape:
 | `command.devices` | Recognized device entries accepted from this datagram. |
 | `command.y_clamped` | Accepted device entries whose Y value was clamped. |
 | `command.payload` | Original command datagram as a JSON string, retained for inspection and resend. |
-| `detail` | Compact English processing summary. |
 
 The report socket is non-blocking and telemetry delivery is intentionally
 lossy. A full socket buffer, invalid multicast configuration, or local delivery
@@ -166,6 +223,8 @@ a frame. No acknowledgement is expected or read.
   "version": 1,
   "event": "haptic_vibration",
   "sequence": 7,
+  "suppressed": 0,
+  "detail": "0.125 s at 160.5 Hz, amplitude 0.75",
   "device": "right_controller",
   "haptic": {
     "duration_seconds": 0.125,
@@ -175,20 +234,22 @@ a frame. No acknowledgement is expected or read.
 }
 ```
 
+The envelope fields are described in [Event Schema](#event-schema). This event
+never suppresses repeats, so `suppressed` is always `0`. The type-specific fields
+are:
+
 | Field | Meaning |
 | --- | --- |
-| `version` | Driver logging protocol version. Version 1 is current. |
-| `event` | Always `haptic_vibration` for this shape. |
-| `sequence` | Monotonic report number, counted separately from `command_processed` reports because the two streams are produced independently. It restarts at driver startup. |
 | `device` | Controller asked to vibrate: `left_controller` or `right_controller`. |
 | `haptic.duration_seconds` | Requested pulse length in seconds. `0` is a legitimate stop request. |
 | `haptic.frequency_hz` | Requested vibration frequency in hertz. |
 | `haptic.amplitude` | Requested strength, `0.0` through `1.0`. |
 
 Values are passed through as SteamVR supplied them; the driver applies no policy
-of its own beyond rejecting non-finite numbers. Because the two event types share
-a group and number their sequences independently, a reader must dispatch on
-`event` before reading any other field.
+of its own beyond rejecting non-finite numbers.
+
+A receiver that only wants haptics keeps the datagrams whose `event` equals
+`haptic_vibration` and ignores the rest, including event types added later.
 
 ## Coordinate Expectations
 

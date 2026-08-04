@@ -20,12 +20,8 @@ class CommandLogSender {
 public:
     void Stop() { m_sender.Stop(); }
 
-    bool Start(const DriverCommandLogConfig& config) {
-        DriverLogSenderConfig senderConfig;
-        senderConfig.enabled = config.enabled;
-        senderConfig.multicastGroup = config.multicastGroup;
-        senderConfig.port = config.port;
-        return m_sender.Start(senderConfig, "Command logging");
+    bool Start(const DriverLogSenderConfig& config) {
+        return m_sender.Start(config, "Command logging");
     }
 
     void Report(
@@ -48,7 +44,7 @@ public:
         }
 
         anyadance::DriverCommandLogPacket packet;
-        packet.sequence = m_sender.NextSequence();
+        packet.envelope.sequence = m_sender.NextSequence();
         char senderHost[INET_ADDRSTRLEN]{};
         if (!InetNtopA(AF_INET, &sender.sin_addr, senderHost, sizeof(senderHost))) {
             return;
@@ -68,19 +64,19 @@ public:
             clampedCount += parsed.y_clamped[slot] ? 1 : 0;
         }
         if (accepted) {
-            packet.detail = "accepted " + std::to_string(acceptedCount) + " device entries";
+            packet.envelope.detail = "accepted " + std::to_string(acceptedCount) + " device entries";
             if (clampedCount > 0) {
-                packet.detail += "; clamped Y for " + std::to_string(clampedCount);
+                packet.envelope.detail += "; clamped Y for " + std::to_string(clampedCount);
             }
         } else {
-            packet.detail = "invalid pose frame";
+            packet.envelope.detail = "invalid pose frame";
         }
 
         // Remember the reported state before serializing. An oversized report
         // is dropped below, and re-deriving it for every repeat of the same
         // command would burn the receive thread to no effect.
         RememberLast(data, size, accepted, parsed);
-        packet.suppressed = m_suppressed;
+        packet.envelope.suppressed = m_suppressed;
         m_suppressed = 0;
 
         m_sender.Send(anyadance::SerializeDriverCommandLog(packet));
@@ -142,7 +138,7 @@ UdpPoseReceiver::~UdpPoseReceiver() {
     Stop();
 }
 
-bool UdpPoseReceiver::Start(unsigned short port, DriverCommandLogConfig logConfig) {
+bool UdpPoseReceiver::Start(unsigned short port, DriverLogSenderConfig logConfig) {
     if (m_running.exchange(true)) {
         return true;
     }
@@ -174,7 +170,7 @@ bool UdpPoseReceiver::TryGetLatest(const std::string& deviceId, anyadance::PoseS
     return true;
 }
 
-void UdpPoseReceiver::Run(unsigned short port, DriverCommandLogConfig logConfig) {
+void UdpPoseReceiver::Run(unsigned short port, DriverLogSenderConfig logConfig) {
     WSADATA wsaData{};
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
         DriverLog("[anyadance] WSAStartup failed\n");

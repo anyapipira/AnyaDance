@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/constants.h"
 #include "core/pose_sample.h"
 
 #include <array>
@@ -14,6 +15,8 @@ enum class VirtualDeviceKind {
 };
 
 struct VirtualDeviceDefinition {
+    // Identifies the device to shared core rules such as its Y floor.
+    anyadance::DeviceIndex index = anyadance::DeviceIndex::Hmd;
     std::string deviceId;
     std::string serial;
     VirtualDeviceKind kind = VirtualDeviceKind::Tracker;
@@ -38,6 +41,10 @@ public:
     void ApplyInvalidPose();
     void UpdateInputs();
     void UpdatePose();
+
+    // Handle SteamVR names when it asks this device to vibrate. Invalid for
+    // devices that expose no haptic output (the HMD and the trackers).
+    vr::VRInputComponentHandle_t GetHapticComponentHandle() const { return m_hapticHandle; }
 
     const VirtualDeviceDefinition& GetDefinition() const { return m_definition; }
     const std::string& GetSerialNumber() const { return m_definition.serial; }
@@ -68,6 +75,7 @@ private:
     vr::VRInputComponentHandle_t m_trackpadX;
     vr::VRInputComponentHandle_t m_trackpadY;
     vr::VRInputComponentHandle_t m_skeletonHandle;
+    vr::VRInputComponentHandle_t m_hapticHandle;
     bool m_currentTriggerClick = false;
     float m_currentTriggerValue = 0.0f;
     bool m_currentMenuClick = false;

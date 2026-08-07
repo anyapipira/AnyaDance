@@ -62,6 +62,10 @@
       "type": "skeleton",
       "skeleton": "/skeleton/hand/right",
       "order": 11
+    },
+    "/output/haptic": {
+      "type": "vibration",
+      "order": 12
     }
   },
   "default_bindings": []

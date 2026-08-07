@@ -2,6 +2,8 @@
 
 #include "core/constants.h"
 #include "core/pose_sample.h"
+#include "core/protocol.h"
+#include "driver_log_sender.h"
 
 #include <array>
 #include <atomic>
@@ -17,13 +19,13 @@ public:
     UdpPoseReceiver(const UdpPoseReceiver&) = delete;
     UdpPoseReceiver& operator=(const UdpPoseReceiver&) = delete;
 
-    bool Start(unsigned short port);
+    bool Start(unsigned short port, DriverLogSenderConfig logConfig);
     void Stop();
     bool TryGetLatest(const std::string& deviceId, anyadance::PoseSample& sample) const;
 
 private:
-    void Run(unsigned short port);
-    bool StoreIfValid(const char* data, int size);
+    void Run(unsigned short port, DriverLogSenderConfig logConfig);
+    bool StoreIfValid(const char* data, int size, anyadance::ParsedFrame& parsed);
 
     mutable std::mutex m_mutex;
     std::array<anyadance::PoseSample, anyadance::kDevices.size()> m_latest{};

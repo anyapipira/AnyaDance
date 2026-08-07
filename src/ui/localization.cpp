@@ -12,6 +12,7 @@ namespace {
 const char* const kStrings[kTextCount][kLanguageCount] = {
     /* Reset                 */ {"Reset to T-Pose", u8"重置为 T 姿势"},
     /* UdpLog                */ {"UDP Log", u8"UDP 日志"},
+    /* MonitorDriverCommands */ {"Monitor driver commands", u8"监视驱动命令"},
     /* LogScrollLatest       */ {"Scroll to latest", u8"滚动到最新"},
     /* Clear                 */ {"Clear", u8"清除"},
     /* Copy                  */ {"Copy", u8"复制"},

@@ -24,6 +24,7 @@
 #include "core/tpose.h"
 #include "core/udp_log.h"
 #include "ui/driver_control.h"
+#include "ui/driver_log_listener.h"
 #include "ui/localization.h"
 #include "ui/mmd_dance.h"
 #include "ui/theme.h"
@@ -32,6 +33,7 @@
 #include "imgui.h"
 
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
@@ -129,6 +131,7 @@ public:
     }
 
     void Stop() {
+        m_driverLogListener.Stop();
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             if (!m_running) {
@@ -182,6 +185,83 @@ public:
         m_log.Clear();
     }
 
+    bool SetDriverLogMonitoring(bool enabled) {
+        if (!enabled) {
+            m_driverLogListener.Stop();
+            return true;
+        }
+        if (m_driverLogListener.IsRunning()) {
+            return true;
+        }
+
+        std::string error;
+        const bool started = m_driverLogListener.Start(
+            kDriverLogMulticastGroup,
+            kDriverLogPort,
+            [this](DriverLogEvent event) {
+                if (event.type == DriverLogEventType::HapticVibration) {
+                    OnDriverHaptic(event.haptic);
+                    return;
+                }
+                DriverCommandLogPacket& packet = event.command;
+                const std::string endpoint = packet.senderHost + ":" +
+                    std::to_string(packet.senderPort);
+                std::string detail = packet.envelope.detail;
+                if (!detail.empty()) {
+                    detail += "; ";
+                }
+                detail += "driver report #" + std::to_string(packet.envelope.sequence);
+                // The driver reports only when a command changes, so this says
+                // how long the previous pose was held before this one arrived.
+                if (packet.envelope.suppressed > 0) {
+                    detail += "; " + std::to_string(packet.envelope.suppressed) +
+                        " identical commands held before this one";
+                }
+                std::lock_guard<std::mutex> logLock(m_logMutex);
+                m_log.AddDriverCommand(
+                    packet.accepted ? "Pose frame processed" : "Pose frame rejected",
+                    packet.accepted ? "Processed" : "Rejected",
+                    endpoint,
+                    std::move(packet.payload),
+                    std::move(detail),
+                    packet.accepted,
+                    packet.envelope.sequence,
+                    packet.envelope.timestampMs);
+            },
+            error);
+        if (!started) {
+            std::lock_guard<std::mutex> logLock(m_logMutex);
+            m_log.Add("Driver log listener", m_failedResult, {}, std::move(error));
+        }
+        return started;
+    }
+
+    bool IsDriverLogMonitoring() const {
+        return m_driverLogListener.IsRunning();
+    }
+
+    // A haptic pulse SteamVR asked a virtual controller to play. Nothing is
+    // played back; the row records what an external tool would act on. The
+    // result column names the device rather than a sender, since the request
+    // came from SteamVR rather than over the pose socket.
+    void OnDriverHaptic(const DriverHapticLogPacket& haptic) {
+        // The summary rides in the envelope, so this renders it the same way the
+        // command rows do instead of re-deriving it from the typed fields.
+        std::string detail = haptic.envelope.detail;
+        if (!detail.empty()) {
+            detail += "; ";
+        }
+        detail += "driver report #" + std::to_string(haptic.envelope.sequence);
+        std::lock_guard<std::mutex> logLock(m_logMutex);
+        m_log.AddDriverEvent(
+            "Haptic vibration",
+            kDevices[DeviceSlot(haptic.device)].id,
+            {},
+            std::move(detail),
+            haptic.envelope.sequence,
+            haptic.envelope.timestampMs);
+    }
+
     // Resend a captured payload once over the same UDP socket and log the result.
     // Holding m_mutex keeps Stop() from closing the socket mid-send. Used by the
     // log detail dialog's Resend button so a past datagram can be replayed.
@@ -202,7 +282,9 @@ public:
         // instead of overwriting it with the live frame on the next tick. The next
         // UpdateFrame (any pose change) clears the pin.
         m_pinnedPayload = payload;
-        m_log.Add(reason, m_sentResult, payload);
+        if (!m_driverLogListener.IsRunning()) {
+            m_log.Add(reason, m_sentResult, payload);
+        }
         return true;
     }
 
@@ -249,7 +331,7 @@ private:
             if (error != 0) {
                 std::lock_guard<std::mutex> logLock(m_logMutex);
                 m_log.Add(m_socketErrorReason, m_failedResult, payload, "WSA error " + std::to_string(error));
-            } else if (!reason.empty()) {
+            } else if (!reason.empty() && !m_driverLogListener.IsRunning()) {
                 std::lock_guard<std::mutex> logLock(m_logMutex);
                 if (manipulation) {
                     m_log.AddManipulation(m_sentResult, payload, reason);
@@ -267,6 +349,7 @@ private:
 
     mutable std::mutex m_logMutex;
     UdpLog m_log;
+    DriverLogListener m_driverLogListener;
     std::mutex m_mutex;
     std::condition_variable m_cv;
     FrameState m_frame{};
@@ -322,6 +405,10 @@ struct AppState {
     std::string driverStatusDetail;
     int selectedLogIndex = -1;
     bool logScrollToLatest = true;
+    // Off until the user asks for it: joining the group makes driver reports the
+    // source of truth for successful sends, which is a monitoring choice rather
+    // than a default. LoadPreferences restores whatever the user last chose.
+    bool monitorDriverCommands = false;
 
     // MMD dance: dialog parameters, async Blender solve, and playback state.
     bool danceDialogOpen = false;

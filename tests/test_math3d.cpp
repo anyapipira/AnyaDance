@@ -70,9 +70,20 @@ void TestMath3d() {
     EXPECT_NEAR(ClampFloat(-5.0f, 0.0f, 1.0f), 0.0f, 0.0001f);
     EXPECT_NEAR(ClampFloat(0.3f, 0.0f, 1.0f), 0.3f, 0.0001f);
 
-    EXPECT_NEAR(ClampDeviceY(30.0f), kMaxDeviceY, 0.0001f);
-    EXPECT_NEAR(ClampDeviceY(-1.0f), kMinDeviceY, 0.0001f);
-    EXPECT_NEAR(ClampDeviceY(0.5f), 0.5f, 0.0001f);
+    // The ceiling is shared, but only the HMD has a floor at the ground plane.
+    EXPECT_NEAR(ClampDeviceY(DeviceIndex::Hmd, 30.0f), kMaxDeviceY, 0.0001f);
+    EXPECT_NEAR(ClampDeviceY(DeviceIndex::LeftFoot, 30.0f), kMaxDeviceY, 0.0001f);
+    EXPECT_NEAR(ClampDeviceY(DeviceIndex::Hmd, -1.0f), kMinHmdY, 0.0001f);
+    EXPECT_NEAR(ClampDeviceY(DeviceIndex::Hmd, 0.5f), 0.5f, 0.0001f);
+
+    // Every non-HMD device passes negative Y through down to the shared range.
+    for (const DeviceInfo& device : kDevices) {
+        if (device.index == DeviceIndex::Hmd) {
+            continue;
+        }
+        EXPECT_NEAR(ClampDeviceY(device.index, -1.0f), -1.0f, 0.0001f);
+        EXPECT_NEAR(ClampDeviceY(device.index, -40.0f), kMinTrackerY, 0.0001f);
+    }
 
 
     // DegToRad / RadToDeg are inverses.

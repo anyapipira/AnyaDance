@@ -5,12 +5,18 @@
 
 namespace anyadance::ui {
 
+std::string LogEndpoint(const UdpLogEntry& entry) {
+    return entry.endpoint.empty()
+        ? std::string(kUdpHost) + ":" + std::to_string(kUdpPort)
+        : entry.endpoint;
+}
+
 // Hover preview for a log row: timestamp, endpoint, reason/result, and the
 // pretty-printed JSON payload in the monospace font.
 void RenderLogTooltip(const UdpLogEntry& entry) {
     ImGui::BeginTooltip();
     ImGui::Text("%s", entry.timeText.c_str());
-    ImGui::Text("127.0.0.1:%u", kUdpPort);
+    ImGui::TextUnformatted(LogEndpoint(entry).c_str());
     if (!entry.detail.empty()) {
         ImGui::TextWrapped("%s", entry.detail.c_str());
     } else {
@@ -61,7 +67,7 @@ void RenderPinnedLogDetail(const UdpLogEntry& entry) {
         g_app.selectedLogIndex = -1;
     }
     ImGui::Text("%s", entry.timeText.c_str());
-    ImGui::Text("127.0.0.1:%u", kUdpPort);
+    ImGui::TextUnformatted(LogEndpoint(entry).c_str());
     ImGui::Text("%s: %s", Tr(Text::Reason), entry.reason.c_str());
     if (!entry.detail.empty()) {
         ImGui::TextWrapped("%s", entry.detail.c_str());
@@ -99,6 +105,13 @@ void RenderPinnedLogDetail(const UdpLogEntry& entry) {
 void RenderLogPanel() {
     ImGui::BeginChild("log", ImVec2(0, 0), false);
     ImGui::TextUnformatted(Tr(Text::UdpLog));
+    if (ImGui::Checkbox(
+            Tr(Text::MonitorDriverCommands),
+            &g_app.monitorDriverCommands)) {
+        if (!g_app.streamer.SetDriverLogMonitoring(g_app.monitorDriverCommands)) {
+            g_app.monitorDriverCommands = false;
+        }
+    }
     // Right-align the checkbox and Clear button: Clear pins to the right edge and
     // the checkbox sits just left of it. A checkbox spans the box (frame height)
     // plus the inner spacing and its label.
@@ -143,7 +156,7 @@ void RenderLogPanel() {
             ImGui::TextUnformatted(entry.reason.c_str());
             ImGui::TableSetColumnIndex(2);
             // Green for a delivered datagram, red for any failure/socket error.
-            const bool ok = entry.result == En(Text::Sent);
+            const bool ok = entry.result == En(Text::Sent) || entry.result == "Processed";
             ImGui::TextColored(ok ? col::Green : col::Red, "%s", entry.result.c_str());
         }
         // Follow the newest row while "Scroll to latest" is checked. Clicking a

@@ -30,7 +30,7 @@ anyadance_left_foot_001              generic tracker
 anyadance_right_foot_001             generic tracker
 ```
 
-The controllers advertise `knuckles` controller type and use Valve Index render models through `{indexcontroller}`. The input profile lives under the public `{anyadance}` resource namespace.
+The controllers advertise `knuckles` controller type and use Valve Index render models through `{indexcontroller}`. The input profile lives under the public `{anyadance}` resource namespace. They also expose an `/output/haptic` component so SteamVR routes haptic requests to them; the driver has no motor and plays nothing back, but reports each request on the driver log group (see [protocol.md](protocol.md)).
 
 ## T-Pose Constants
 
@@ -77,13 +77,13 @@ stretched.
 
 The companion UI has one mirror checkbox between the controller boxes and one between the foot boxes. When enabled, dragging either side makes the opposite side the absolute reflected pose. In HMD frame mode, the reflection uses the local YZ plane defined by the current HMD yaw and HMD position. In Global frame mode, it uses world axes with the HMD position as the center. This keeps the pair symmetric rather than copying or negating only the drag delta.
 
-The capture panel reserves a fixed-height mouse-help area, keeping the device rows stable while switching languages. The boxes resize to fit the panel height. Left mouse drag moves non-HMD devices in local X/Y, middle mouse drag rotates, and right mouse drag moves depth. The HMD allows rotation, plus vertical (Y) movement with a right mouse drag (a left+right chord also works). All device Y positions are clamped to `0–25 m`. Over the empty panel area, a middle mouse drag rotates the whole rig (yaw/pitch) about the HMD position, middle+right rolls it, and right alone moves the whole rig vertically, stopping as a unit at either Y boundary.
+The capture panel reserves a fixed-height mouse-help area, keeping the device rows stable while switching languages. The boxes resize to fit the panel height. Left mouse drag moves non-HMD devices in local X/Y, middle mouse drag rotates, and right mouse drag moves depth. The HMD allows rotation, plus vertical (Y) movement with a right mouse drag (a left+right chord also works). Device Y is capped at `25 m`, but only the HMD has a floor: it stops at `0 m`, while the other five devices may go below the ground plane down to `-30 m`. Over the empty panel area, a middle mouse drag rotates the whole rig (yaw/pitch) about the HMD position, middle+right rolls it, and right alone moves the whole rig vertically, stopping as a unit at either Y boundary — on the way down that is the HMD reaching `0 m`.
 
 Dragging the empty area of the panel drives the right controller thumbstick: the press point is the neutral center and the drag offset maps to the stick axes, clamped to ±1, recentering on release. It is intended for aiming the right-hand quick menu (held `M`).
 
 ## Tool Log
 
-The companion UI keeps the UDP log in English regardless of selected UI language. Hovering any part of a log row shows the transmitted JSON. Clicking a row highlights it and opens a pinned detail window with a scrollable JSON view; clicking the highlighted row again closes the detail window. Focus changes are logged only when they release active controller input.
+The companion UI keeps the UDP log in English regardless of selected UI language. **Monitor driver commands** joins the loopback multicast group `239.255.39.71:39571` for the driver's processing reports and can be toggled while the UI is running. It starts off, and the choice is remembered across launches. Other local processes may join the same group simultaneously. Driver reports show the original sender endpoint, accepted or rejected result, processing detail, and raw command JSON. While monitoring is active, those reports provide successful command rows and the UI suppresses its own successful-send rows. Hovering any part of a log row shows the JSON. Clicking a row highlights it and opens a pinned detail window with a scrollable JSON view; clicking the highlighted row again closes the detail window.
 
 ## Localization
 

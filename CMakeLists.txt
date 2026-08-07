@@ -32,6 +32,7 @@ endif()
 set(ANYADANCE_OUTPUT_DRIVER_ROOT "${CMAKE_BINARY_DIR}/out/anyadance")
 
 add_library(anyadance_core STATIC
+    src/core/driver_log_protocol.cpp
     src/core/frame_state.cpp
     src/core/input_state.cpp
     src/core/json.cpp
@@ -91,6 +92,7 @@ if(ANYADANCE_BUILD_DRIVER)
     resolve_openvr()
     add_library(driver_anyadance SHARED
         src/driver/driver_factory.cpp
+        src/driver/driver_log_sender.cpp
         src/driver/log.cpp
         src/driver/server_driver.cpp
         src/driver/udp_pose_receiver.cpp
@@ -155,6 +157,7 @@ if(ANYADANCE_BUILD_UI)
     add_executable(AnyaDanceUI WIN32
         src/ui/main.cpp
         src/ui/ui_state.cpp
+        src/ui/driver_log_listener.cpp
         src/ui/input.cpp
         src/ui/panel_main.cpp
         src/ui/panel_body.cpp
@@ -176,6 +179,7 @@ if(ANYADANCE_BUILD_UI)
             "${ANYADANCE_OUTPUT_DRIVER_ROOT}/scripts/blender_export_mmd.py"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/scripts/common_steamvr.ps1"
+            "${CMAKE_CURRENT_SOURCE_DIR}/scripts/listen_driver_log.ps1"
             "${CMAKE_CURRENT_SOURCE_DIR}/scripts/unregister_driver.ps1"
             "${CMAKE_CURRENT_SOURCE_DIR}/scripts/restart_steamvr.ps1"
             "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.ps1"
@@ -221,6 +225,7 @@ if(ANYADANCE_BUILD_TESTS AND BUILD_TESTING)
         tests/test_input.cpp
         tests/test_manipulation.cpp
         tests/test_finger.cpp
+        tests/test_driver_log_protocol.cpp
         tests/test_udp_log.cpp
         tests/test_json.cpp
         tests/test_mmd.cpp

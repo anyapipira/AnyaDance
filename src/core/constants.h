@@ -20,11 +20,24 @@ inline constexpr const char* kUdpHost = "127.0.0.1";
 inline constexpr unsigned short kUdpPort = 39570;
 inline constexpr int kProtocolVersion = 1;
 inline constexpr int kMaxPacketBytes = 8192;
+inline constexpr const char* kDriverLogMulticastGroup = "239.255.39.71";
+inline constexpr const char* kDriverLogMulticastInterface = "127.0.0.1";
+inline constexpr unsigned short kDriverLogPort = 39571;
+inline constexpr int kDriverLogProtocolVersion = 1;
+inline constexpr int kMaxDriverLogPacketBytes = 65507;
+// Sanity bounds for reported haptic pulses. The driver forwards what SteamVR
+// supplied, so these only reject nonsense rather than asserting a policy.
+inline constexpr float kMaxHapticDurationSeconds = 3600.0f;
+inline constexpr float kMaxHapticFrequencyHz = 100000.0f;
 inline constexpr float kMaxAbsPositionMeters = 30.0f;
-inline constexpr float kMinDeviceY = 0.0f;
 inline constexpr float kMaxDeviceY = 25.0f;
-// The HMD uses the shared floor while dragging.
+// Only the HMD has a floor. It is the play-space head, so placing it below the
+// ground plane puts the view underground. The other five devices legitimately go
+// below it — a foot passing under the floor plane, a hip in a floor move, or a
+// solved motion whose origin sits above the ground — so their Y is bounded only
+// by the shared position range that already applies to X and Z.
 inline constexpr float kMinHmdY = 0.0f;
+inline constexpr float kMinTrackerY = -kMaxAbsPositionMeters;
 inline constexpr int kStreamRateHz = 60;
 
 inline constexpr float kResetHmdY = 1.50f;
@@ -62,6 +75,15 @@ inline constexpr std::array<DeviceInfo, 6> kDevices = {{
 
 inline constexpr std::size_t DeviceSlot(DeviceIndex index) {
     return static_cast<std::size_t>(index);
+}
+
+// Lowest Y a device may occupy. Only the HMD is held above the ground plane.
+inline constexpr float MinDeviceY(DeviceIndex index) {
+    return index == DeviceIndex::Hmd ? kMinHmdY : kMinTrackerY;
+}
+
+inline constexpr float MinDeviceY(std::size_t slot) {
+    return MinDeviceY(static_cast<DeviceIndex>(slot));
 }
 
 } // namespace anyadance

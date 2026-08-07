@@ -14,7 +14,7 @@ Released under the Apache License 2.0 as part of Project Anya.
 
 ## Layout
 
-- `src/core/` — shared, platform-light logic: protocol, frame state, freshness,
+- `src/core/` — shared, platform-light logic: command and driver-log protocols, frame state, freshness,
   T-pose math, manipulation, input state, UDP log, a small JSON DOM (`json`), and
   the MMD dance remap (`solved_motion` parses the Blender solve JSON,
   `mmd_retarget` remaps it onto the six devices), and the `.nya` clip format
@@ -22,7 +22,7 @@ Released under the Apache License 2.0 as part of Project Anya.
   one-frame clip, an animation is many). Built as `anyadance_core` and exercised
   by the tests. Keep it free of OpenVR and Win32 so tests build it.
 - `src/driver/` — the SteamVR driver DLL (`server_driver`, `virtual_device`,
-  `udp_pose_receiver`). Links OpenVR.
+  `udp_pose_receiver`, `driver_log_sender`). Links OpenVR.
 - `src/ui/` — the Dear ImGui Win32/DX11 UI (`main.cpp`, `localization`,
   `driver_control`, `mmd_dance`). `mmd_dance` launches Blender headless with
   `scripts/blender_export_mmd.py` to solve a VMD against a model and reads back the
@@ -90,12 +90,52 @@ a root turns off fetching for that dependency.
   virtual HMD in fully virtual mode.
 - All devices set `Prop_IgnoreMotionForStandby_Bool` so SteamVR does not idle a
   held-still virtual device into standby/powersave.
-- All device Y is clamped to `0–25 m` (`kMinDeviceY`–`kMaxDeviceY`) — in the UI before sending
-  and in the driver after packet validation.
+- Device Y shares the `kMaxDeviceY` ceiling of `25 m`, but the floor is
+  per-device: only the HMD is held above the ground plane (`kMinHmdY`, `0 m`),
+  because it is the play-space head. The other five may go below it and are
+  bounded only by `kMinTrackerY` (`-30 m`, the shared position range). Use
+  `MinDeviceY(index)` / `ClampDeviceY(index, y)` rather than a single constant.
+  Clamping happens in the UI before sending and in the driver after packet
+  validation.
 - The UDP log is always recorded in English. UI strings are localized through the
   row-per-string table in `src/ui/localization.*`; access with `Tr(Text::...)`.
   Adding a string is one enum value plus one table row (a `static_assert` guards
   the row count).
+- Driver command reports use logging protocol version 1 and default to the
+  loopback-only multicast group `239.255.39.71:39571`. Reporting is best-effort
+  and non-blocking. When the UI joins that group, driver reports are the source
+  of truth for successful commands;
+  keep UI-side successful-send rows suppressed to avoid duplicates.
+- The driver log group carries more than one event type. Every event shares the
+  `DriverLogEnvelope` (`version`, `event`, `sequence`, `timestamp_ms`,
+  `suppressed`, `detail`),
+  serialized by `AppendEnvelope` and validated by `ParseEnvelope` — add new event
+  types through those, never by hand, or the envelope drifts. `sequence` is
+  global across all events and all sender threads, not per type. Dispatch with
+  `ParseDriverLogBytes`; an event name it does not know parses as
+  `DriverLogEventType::Unknown` with a valid envelope rather than failing,
+  because receivers must be able to skip new event types. The schema contract
+  published to receivers is in `docs/protocol.md` — keep it accurate.
+- UDP reorders, duplicates, and drops. Order driver events by `sequence`, never
+  by arrival: `UdpLog::InsertBySequence` places a late event within a bounded
+  window and drops a repeated one. Call `DriverLogSender::Stamp` immediately
+  before sending — two threads share the counter, so anything between stamping
+  and `sendto` is a window in which events can leave out of order. Stamp rather
+  than setting the fields by hand, so a new event type cannot ship numbered but
+  untimed.
+- `timestamp_ms` says *when*, `sequence` says *in what order*. The wall clock can
+  step backwards (NTP, manual change, VM resume) and two events can share a
+  millisecond, so never order, deduplicate, or detect loss with the timestamp.
+  It is optional on the wire and zero when absent, which is how a sender
+  predating the field parses.
+- Haptic requests to the two controllers are reported as `haptic_vibration`,
+  gated by `haptic_log_enabled` (default true); the `/output/haptic` component is
+  always created, so the switch never changes what SteamVR sees. The driver
+  observes haptics only — it has no motor and plays nothing back.
+- The driver reports a command only when it differs from the last reported one
+  (`SamePoseCommand`), because a held pose repeats at the stream rate. Keep this
+  a change filter, not a rate limit: every distinct command still goes out, and
+  absorbed repeats are counted in the next report's optional `suppressed` field.
 - Add focused tests in the relevant `tests/test_*.cpp` file for protocol,
   safety, freshness, T-pose, input, manipulation, and log behavior. Update
   `docs/` when behavior changes.

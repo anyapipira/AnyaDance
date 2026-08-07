@@ -138,6 +138,19 @@ Then restart SteamVR (`.\scripts\restart_steamvr.ps1`). `3840x2160` is 4K. Any a
 
 Values set in `steamvr.vrsettings` win over the driver defaults in `resources\settings\default.vrsettings`. The same section also exposes `headset_window_width`, `headset_window_height`, `headset_window_eye_mode`, and `headset_window_preserve_aspect` for the desktop mirror window; see [docs/device-model.md](docs/device-model.md).
 
+The driver also reports processed UDP commands over a loopback-only multicast
+group by default. The group and port are configurable in the same section:
+
+```json
+"driver_anyadance": {
+    "command_log_enabled": true,
+    "command_log_multicast_group": "239.255.39.71",
+    "command_log_port": 39571
+}
+```
+
+The UI's **Monitor driver commands** switch starts off and remembers your choice across launches. It joins or leaves the default group immediately. Multiple local applications can subscribe simultaneously. Run `.\scripts\listen_driver_log.ps1` for a reference listener, or add `-Validate -ListenerCount 3` to verify three independent receiver processes. To subscribe from your own application, see [Writing A Receiver](docs/protocol.md#writing-a-receiver) for the socket setup, a worked example, and what to check when nothing arrives; [docs/protocol.md](docs/protocol.md#driver-command-logging) covers the packet schema and delivery behavior.
+
 ## Run The Test UI
 
 ```powershell
@@ -149,7 +162,7 @@ The UI:
 - starts 60 Hz UDP streaming automatically
 - continues streaming while minimized or unfocused
 - sends a final neutral-input frame on normal exit
-- keeps the UDP log in English, omits unchanged keepalive packets, and names what each entry was: the key and action that changed (for example `Z left trigger down`), the device that was dragged (for example `Hip manipulated`), or a finger-bend change
+- keeps the UDP log in English and can hot-toggle driver command monitoring; while monitoring is active, driver processing reports show commands from the UI and third-party UDP senders without duplicate successful-send rows
 - shows hover or pinned row detail with three payload actions: Copy (the raw request body), Copy resend command (a runnable PowerShell UDP one-liner), and Resend (replays the exact datagram from the UI over its own socket)
 - can register/unregister its own folder as the SteamVR driver and restart SteamVR (with a confirmation) from its own buttons
 - has an Always on top checkbox that pins the window above other windows; the choice is remembered between runs
@@ -169,9 +182,9 @@ Z     left trigger while held
 X     right trigger while held
 ```
 
-Mouse manipulation uses the six device boxes. The capture panel and boxes resize with the UI window. The HMD box allows rotation, plus vertical (Y) movement with a right mouse drag; a left+right chord provides the same vertical gesture. Other devices use left mouse drag for local X/Y movement, middle mouse drag for rotation, and right mouse drag for depth movement. All device Y positions use the `0–25 m` range. The HMD/Global frame radio buttons choose whether manipulation uses the HMD yaw basis or fixed world axes. The hand and foot pair mirror checkboxes use the same frame setting: HMD mode mirrors across the HMD-yaw YZ plane, and Global mode mirrors across world axes centered on the HMD position. The mouse wheel opens and closes both hands' fingers. Hold a number key while scrolling to bend a single finger: `1`-`5` are the left hand from pinky to thumb, `6`-`0` are the right hand from thumb to pinky (so `5`/`6` are the thumbs and `1`/`0` the pinkies). Each finger is clamped to `[0, 1]`, and scrolling all the way in one direction resets every finger to fully open or fully closed. Closing every finger on a hand into a fist (all bends near full) presses that hand's grip; releasing any finger releases it, which drives VRChat's grab.
+Mouse manipulation uses the six device boxes. The capture panel and boxes resize with the UI window. The HMD box allows rotation, plus vertical (Y) movement with a right mouse drag; a left+right chord provides the same vertical gesture. Other devices use left mouse drag for local X/Y movement, middle mouse drag for rotation, and right mouse drag for depth movement. Device Y is capped at `25 m`, and only the HMD has a floor at `0 m`; the other five devices may go below the ground plane down to `-30 m`. The HMD/Global frame radio buttons choose whether manipulation uses the HMD yaw basis or fixed world axes. The hand and foot pair mirror checkboxes use the same frame setting: HMD mode mirrors across the HMD-yaw YZ plane, and Global mode mirrors across world axes centered on the HMD position. The mouse wheel opens and closes both hands' fingers. Hold a number key while scrolling to bend a single finger: `1`-`5` are the left hand from pinky to thumb, `6`-`0` are the right hand from thumb to pinky (so `5`/`6` are the thumbs and `1`/`0` the pinkies). Each finger is clamped to `[0, 1]`, and scrolling all the way in one direction resets every finger to fully open or fully closed. Closing every finger on a hand into a fist (all bends near full) presses that hand's grip; releasing any finger releases it, which drives VRChat's grab.
 
-Dragging the empty area of the body panel acts as the right thumbstick: the press point is the stick center, and dragging deflects it within ±1 on each axis, returning to neutral on release. This is meant for navigating the right-hand quick menu (opened by holding `M`). The empty area also manipulates the whole rig at once: a middle mouse drag rotates all six devices (yaw/pitch) about the HMD position, a middle+right drag rolls them about the same pivot, and a right mouse drag moves the whole rig vertically while preserving its shape within the `0–25 m` Y range. Rig rotation uses the same HMD/Global frame setting as the per-device gestures.
+Dragging the empty area of the body panel acts as the right thumbstick: the press point is the stick center, and dragging deflects it within ±1 on each axis, returning to neutral on release. This is meant for navigating the right-hand quick menu (opened by holding `M`). The empty area also manipulates the whole rig at once: a middle mouse drag rotates all six devices (yaw/pitch) about the HMD position, a middle+right drag rolls them about the same pivot, and a right mouse drag moves the whole rig vertically while preserving its shape, stopping on the way down when the HMD reaches `0 m`. Rig rotation uses the same HMD/Global frame setting as the per-device gestures.
 
 ## MMD Dance
 
@@ -202,12 +215,12 @@ A `.nya` file is a small JSON clip of device-level frames — the six device pos
 plus per-hand finger bends — ready to stream with no further conversion. The
 format is the same for poses and animations: a **pose** is a one-frame clip
 (played as a held loop of that single frame) and an **animation** (such as a
-saved MMD dance) is many timed frames. Loading clamps device Y to `0–25 m` and
-finger bends to `[0, 1]`.
+saved MMD dance) is many timed frames. Loading clamps device Y to `0–25 m` for
+the HMD and `-30–25 m` for the other five devices, and finger bends to `[0, 1]`.
 
 ## Safety And Liveness
 
-All six devices use a `0–25 m` Y range. The UI clamps before serialization and the native driver clamps again after packet validation.
+All six devices share a `25 m` Y ceiling. Only the HMD has a floor, at `0 m` — it is the play-space head, so putting it below the ground plane puts the view underground. The other five devices legitimately go below it (a foot passing under the floor plane, a hip in a floor move) and are bounded only by the shared `±30 m` position range. The UI clamps before serialization and the native driver clamps again after packet validation.
 
 All six devices start connected and valid at neutral poses. Accepted packets update the latest pose and controller inputs. If packets stop, SteamVR continues to see each device connected, valid, and `TrackingResult_Running_OK` at its last accepted pose.
 

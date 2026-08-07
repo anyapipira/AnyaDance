@@ -103,8 +103,9 @@ on later runs.
 
 A `.nya` file stores device-level frames (the six device poses plus per-hand
 finger bends), so it is the same format the main window uses for **Save Pose** /
-**Load Pose**: a pose is just a one-frame clip. Device Y is clamped to the 0–25 m
-limit and finger bends to `[0, 1]` on load. See `src/core/nya_format.*`.
+**Load Pose**: a pose is just a one-frame clip. On load, device Y is clamped to
+the 0–25 m limit for the HMD and the -30–25 m limit for the other five devices,
+and finger bends to `[0, 1]`. See `src/core/nya_format.*`.
 
 ## Runtime behavior
 

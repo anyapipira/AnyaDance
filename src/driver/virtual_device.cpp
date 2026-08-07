@@ -613,7 +613,8 @@ VirtualDevice::VirtualDevice(VirtualDeviceDefinition definition)
       m_joystickY(k_ulInvalidInputComponentHandle),
       m_trackpadX(k_ulInvalidInputComponentHandle),
       m_trackpadY(k_ulInvalidInputComponentHandle),
-      m_skeletonHandle(k_ulInvalidInputComponentHandle) {
+      m_skeletonHandle(k_ulInvalidInputComponentHandle),
+      m_hapticHandle(k_ulInvalidInputComponentHandle) {
     std::memset(&m_pose, 0, sizeof(m_pose));
     m_pose.qWorldFromDriverRotation.w = 1.0f;
     m_pose.qDriverFromHeadRotation.w = 1.0f;
@@ -662,6 +663,7 @@ void VirtualDevice::Deactivate() {
     m_trackpadX = k_ulInvalidInputComponentHandle;
     m_trackpadY = k_ulInvalidInputComponentHandle;
     m_skeletonHandle = k_ulInvalidInputComponentHandle;
+    m_hapticHandle = k_ulInvalidInputComponentHandle;
     m_hasFingerBends = false;
 }
 
@@ -689,8 +691,9 @@ DriverPose_t VirtualDevice::GetPose() {
 
 void VirtualDevice::ApplyPoseSample(const PoseSample& sample) {
     PoseSample safeSample = sample;
-    if (safeSample.position[1] < kMinDeviceY || safeSample.position[1] > kMaxDeviceY) {
-        safeSample.position[1] = ClampDeviceY(safeSample.position[1]);
+    const float minY = MinDeviceY(m_definition.index);
+    if (safeSample.position[1] < minY || safeSample.position[1] > kMaxDeviceY) {
+        safeSample.position[1] = ClampDeviceY(m_definition.index, safeSample.position[1]);
         safeSample.y_clamped = true;
     }
     if (safeSample.y_clamped) {
@@ -698,7 +701,7 @@ void VirtualDevice::ApplyPoseSample(const PoseSample& sample) {
         const auto now = std::chrono::steady_clock::now();
         if (now - lastClampWarning > std::chrono::seconds(1)) {
             DriverLog("[anyadance] Clamped device Y to [%.2f, %.2f] m; device=%s\n",
-                      kMinDeviceY, kMaxDeviceY, m_definition.serial.c_str());
+                      minY, kMaxDeviceY, m_definition.serial.c_str());
             lastClampWarning = now;
         }
     }
@@ -978,6 +981,12 @@ void VirtualDevice::ActivateController(PropertyContainerHandle_t container) {
         nullptr,
         0,
         &m_skeletonHandle);
+
+    // Advertise haptics the way a real Index controller does, so SteamVR routes
+    // VREvent_Input_HapticVibration here. The driver plays nothing back — the
+    // virtual controller has no motor — it only observes the request so external
+    // tools can react to it. See docs/protocol.md.
+    VRDriverInput()->CreateHapticComponent(container, "/output/haptic", &m_hapticHandle);
 }
 
 void VirtualDevice::ActivateTracker(PropertyContainerHandle_t container) {

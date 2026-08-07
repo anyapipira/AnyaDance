@@ -15,7 +15,8 @@ The core library owns data structures and testable behavior:
 - device constants and public identifiers
 - vector/quaternion helpers using XYZW quaternions for wire poses
 - UDP protocol parsing and serialization
-- `0 <= Y <= 25.0 m` safety clamp
+- driver command-log protocol parsing and serialization
+- Per-device Y safety clamp (`0 <= Y <= 25.0 m` for the HMD, `-30.0 <= Y <= 25.0 m` for the rest)
 - canonical T-pose reset
 - keyboard input mapping (every key maps directly to a held button or axis)
 - mouse manipulation math
@@ -29,10 +30,10 @@ The SteamVR driver registers up to six devices:
 - left and right `knuckles` controllers
 - hip, left foot, and right foot generic trackers
 
-The driver starts a loopback UDP receiver on `127.0.0.1:39570`. Valid samples update per-device pose state. Invalid packets are ignored. The driver clamps device Y to the supported `0–25 m` range after validation as a defense in depth.
+The driver starts a loopback UDP receiver on `127.0.0.1:39570`. Valid samples update per-device pose state. Invalid packets are ignored. The driver clamps device Y after validation as a defense in depth: `0–25 m` for the HMD, `-30–25 m` for the other five devices, since only the HMD is held above the ground plane. After each parse attempt, the receiver thread sends one versioned command report through a non-blocking UDP socket to loopback multicast group `239.255.39.71:39571`. The group and port are configurable through the driver settings, while the interface and TTL keep delivery on the local machine. Multiple local application processes can join the group without increasing the number of driver sends. Reports are emitted only when a command differs from the last reported one, so a held pose does not repeat at the stream rate. `RunFrame` also drains SteamVR's event queue and reports haptic requests to the two controllers on the same group, through a separate socket so the RunFrame thread never shares one with the receive thread.
 
 All devices start valid at neutral poses and remain valid if packets stop. The driver reports the latest accepted pose as connected, valid, and `TrackingResult_Running_OK`.
 
 ## UI
 
-The companion UI has a UI thread and a streaming thread. The UI thread owns ImGui rendering, keyboard polling while focused, and mouse manipulation. The streaming thread copies synchronized state, serializes once per frame, and sends a full six-device frame at 60 Hz. The UI log shows state-changing sends; unchanged keepalive packets stay quiet.
+The companion UI has a UI thread, a streaming thread, and an optional driver-log listener thread. The UI thread owns ImGui rendering, keyboard polling while focused, and mouse manipulation. The streaming thread copies synchronized state, serializes once per frame, and sends a full six-device frame at 60 Hz. The **Monitor driver commands** switch joins or leaves the logging multicast group at runtime. While joined, accepted and rejected driver reports feed the existing log and successful local-send rows are suppressed. Accepted 60 Hz reports coalesce into 100 ms display windows to keep log rendering bounded.

@@ -191,7 +191,7 @@ bool ParseNya(const std::string& text, NyaClip& out, std::string& error) {
                 error = std::string("frame has a bad pose for device ") + kDevices[d].id;
                 return false;
             }
-            position.y = ClampDeviceY(position.y);
+            position.y = ClampDeviceY(d, position.y);
             fs.devices[d].position = position;
             fs.devices[d].rotation = rotation;
             fs.devices[d].valid = true;

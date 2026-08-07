@@ -202,7 +202,8 @@ bool ParseProtocolVersion(std::string_view json) {
     return ExtractInt(json, "version", version) && version == kProtocolVersion;
 }
 
-bool ParseDeviceSample(std::string_view devicesObject, std::string_view deviceId, PoseSample& sample) {
+bool ParseDeviceSample(std::string_view devicesObject, const DeviceInfo& device, PoseSample& sample) {
+    const std::string_view deviceId = device.id;
     std::string_view deviceObject;
     if (!FindObjectAfterKey(devicesObject, deviceId, deviceObject)) {
         return false;
@@ -240,8 +241,8 @@ bool ParseDeviceSample(std::string_view devicesObject, std::string_view deviceId
     sample.valid = valid;
     sample.connected = connected;
     sample.position = position;
-    if (sample.position[1] < kMinDeviceY || sample.position[1] > kMaxDeviceY) {
-        sample.position[1] = ClampDeviceY(sample.position[1]);
+    if (sample.position[1] < MinDeviceY(device.index) || sample.position[1] > kMaxDeviceY) {
+        sample.position[1] = ClampDeviceY(device.index, sample.position[1]);
         sample.y_clamped = true;
     }
     sample.rotation_xyzw = rotation;
@@ -345,6 +346,28 @@ void ParseControllerInput(std::string_view inputsObject, std::string_view device
     }
 }
 
+bool SameFingerBends(const FingerBends& a, const FingerBends& b) {
+    return a.thumb == b.thumb && a.index == b.index && a.middle == b.middle &&
+        a.ring == b.ring && a.pinky == b.pinky;
+}
+
+// Exact float comparison is deliberate. A held pose is re-serialized from
+// unchanged state, so a repeat arrives bit-identical; a tolerance here would
+// instead swallow slow deliberate motion.
+bool SameSample(const PoseSample& a, const PoseSample& b) {
+    return a.valid == b.valid && a.connected == b.connected &&
+        a.position == b.position && a.rotation_xyzw == b.rotation_xyzw &&
+        a.trigger_click == b.trigger_click && a.trigger_value == b.trigger_value &&
+        a.menu_click == b.menu_click && a.system_click == b.system_click &&
+        a.a_click == b.a_click && a.b_click == b.b_click &&
+        a.grip_click == b.grip_click && a.grip_value == b.grip_value &&
+        a.joystick_x == b.joystick_x && a.joystick_y == b.joystick_y &&
+        a.trackpad_x == b.trackpad_x && a.trackpad_y == b.trackpad_y &&
+        a.has_finger_bends == b.has_finger_bends &&
+        (!a.has_finger_bends || SameFingerBends(a.finger_bends, b.finger_bends)) &&
+        a.y_clamped == b.y_clamped;
+}
+
 void AppendBool(std::ostringstream& out, bool value) {
     out << (value ? "true" : "false");
 }
@@ -435,7 +458,7 @@ bool ParsePoseFrame(std::string_view json, ParsedFrame& frame) {
     bool anyPresent = false;
     for (const DeviceInfo& device : kDevices) {
         PoseSample sample;
-        if (ParseDeviceSample(devicesObject, device.id, sample)) {
+        if (ParseDeviceSample(devicesObject, device, sample)) {
             if (hasInputs) {
                 ParseControllerInput(inputsObject, device.id, sample);
             }
@@ -456,6 +479,20 @@ bool ParsePoseFrameBytes(const char* data, int size, ParsedFrame& frame) {
         return false;
     }
     return ParsePoseFrame(std::string_view(data, static_cast<std::size_t>(size)), frame);
+}
+
+bool SamePoseCommand(const ParsedFrame& a, const ParsedFrame& b) {
+    if (a.present != b.present || a.y_clamped != b.y_clamped) {
+        return false;
+    }
+    // Absent slots keep default-constructed samples that no device acted on, so
+    // only the entries this frame actually carried are compared.
+    for (std::size_t slot = 0; slot < a.samples.size(); ++slot) {
+        if (a.present[slot] && !SameSample(a.samples[slot], b.samples[slot])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 std::string SerializeFrame(const FrameState& sourceFrame) {

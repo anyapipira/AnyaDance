@@ -9,6 +9,7 @@ namespace anyadance::ui {
 enum class Language : std::size_t {
     English = 0,
     ChineseSimplified,
+    Japanese,
     Count,
 };
 

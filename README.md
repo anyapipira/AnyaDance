@@ -169,7 +169,7 @@ The UI:
 - has an Always on top checkbox that pins the window above other windows; the choice is remembered between runs
 - can play an MMD dance on the fly: the **Dance (MMD)** button opens a dialog to pick a `.vmd` motion and a `.pmx`/`.pmd` model, then Analyze and Play stream the dance onto the six devices (see [docs/mmd-dance.md](docs/mmd-dance.md))
 - can save and restore poses and dances as `.nya` clips: **Save Pose** / **Load Pose** in the main window capture and restore the current pose, and the Dance dialog can **Save .nya** of an analyzed dance and **Load .nya** to play it again without re-solving
-- supports English and Simplified Chinese UI strings through `src/ui/localization.*`
+- supports English, Simplified Chinese, and Japanese UI strings through `src/ui/localization.*`
 - shows the build version in the Windows title bar and footer; GitHub release builds use the exact release tag
 
 Key bindings:

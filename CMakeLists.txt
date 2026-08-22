@@ -268,6 +268,8 @@ if(ANYADANCE_BUILD_TESTS AND BUILD_TESTING)
         tests/test_mmd.cpp
         tests/test_nya.cpp
         tests/test_ui_layout.cpp
+        tests/test_localization.cpp
+        src/ui/localization.cpp
     )
     target_link_libraries(anyadance_tests PRIVATE anyadance_core user32)
     target_include_directories(anyadance_tests PRIVATE

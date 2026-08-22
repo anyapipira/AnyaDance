@@ -391,22 +391,49 @@ ImFont* LoadUiFont(ImGuiIO& io) {
     config.OversampleV = 2;
     config.RasterizerMultiply = 1.15f;
     const char* fontCandidates[] = {
+        "C:\\Windows\\Fonts\\NotoSansCJK-Regular.ttc",
         "C:\\Windows\\Fonts\\msyh.ttc",
         "C:\\Windows\\Fonts\\msyh.ttf",
         "C:\\Windows\\Fonts\\simhei.ttf",
         "C:\\Windows\\Fonts\\simsun.ttc",
-        "C:\\Windows\\Fonts\\NotoSansCJK-Regular.ttc",
         "C:\\Windows\\Fonts\\NotoSansSC-Regular.otf",
     };
+    ImFont* font = nullptr;
     for (const char* path : fontCandidates) {
         if (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
             continue;
         }
-        if (ImFont* font = io.Fonts->AddFontFromFileTTF(path, 16.0f, &config, ranges)) {
-            return font;
+        font = io.Fonts->AddFontFromFileTTF(path, 16.0f, &config, ranges);
+        if (font) {
+            break;
         }
     }
-    return io.Fonts->AddFontDefault();
+    if (!font) {
+        font = io.Fonts->AddFontDefault();
+    }
+
+    // Merge a native Japanese font into the primary CJK font. Windows' Chinese
+    // fonts do not consistently contain kana, while Japanese fonts do not
+    // consistently contain every Simplified Chinese glyph used by the UI.
+    const char* japaneseFontCandidates[] = {
+        "C:\\Windows\\Fonts\\YuGothR.ttc",
+        "C:\\Windows\\Fonts\\YuGothM.ttc",
+        "C:\\Windows\\Fonts\\meiryo.ttc",
+        "C:\\Windows\\Fonts\\msgothic.ttc",
+        "C:\\Windows\\Fonts\\NotoSansJP-Regular.otf",
+    };
+    ImFontConfig mergeConfig = config;
+    mergeConfig.MergeMode = true;
+    mergeConfig.DstFont = font;
+    for (const char* path : japaneseFontCandidates) {
+        if (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
+            continue;
+        }
+        if (io.Fonts->AddFontFromFileTTF(path, 16.0f, &mergeConfig, ranges)) {
+            break;
+        }
+    }
+    return font;
 }
 
 enum class DisclaimerAction { None, Accept, Quit };

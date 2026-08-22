@@ -22,5 +22,6 @@ void TestMmdParse();
 void TestMmdRetarget();
 void TestNya();
 void TestUiLayout();
+void TestLocalization();
 
 } // namespace anyadance::tests

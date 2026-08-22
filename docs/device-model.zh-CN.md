@@ -1,6 +1,6 @@
 # 设备模型
 
-[English](device-model.md) | **简体中文**
+[English](device-model.md) | **简体中文** | [日本語](device-model.ja.md)
 
 ## 公共标识符
 

@@ -1,6 +1,6 @@
 # 架构
 
-[English](architecture.md) | **简体中文**
+[English](architecture.md) | **简体中文** | [日本語](architecture.ja.md)
 
 AnyaDance 由三个运行时部分组成：
 

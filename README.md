@@ -4,7 +4,7 @@
   <img src="docs/images/ui_main.png" alt="AnyaDance main UI" width="50%"><img src="docs/images/ui_mmd.png" alt="AnyaDance MMD UI" width="50%">
 </p>
 
-**English** | [简体中文](README.zh-CN.md)
+**English** | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
 
 AnyaDance is a Windows toolkit for driving and animating a VRChat avatar's full body — pose it by hand, drive it live, or play an MMD dance on it. At its core is a SteamVR/OpenVR virtual-device driver plus a companion UI (`AnyaDance.exe`) that streams to it. The driver exposes six virtual devices for VRChat full-body testing:
 
@@ -83,6 +83,7 @@ build\out\anyadance\DISCLAIMER.md
 build\out\anyadance\TRADEMARKS.md
 build\out\anyadance\README.md
 build\out\anyadance\README.zh-CN.md
+build\out\anyadance\README.ja.md
 build\out\AnyaDance.zip
 ```
 
@@ -169,6 +170,7 @@ The UI:
 - can play an MMD dance on the fly: the **Dance (MMD)** button opens a dialog to pick a `.vmd` motion and a `.pmx`/`.pmd` model, then Analyze and Play stream the dance onto the six devices (see [docs/mmd-dance.md](docs/mmd-dance.md))
 - can save and restore poses and dances as `.nya` clips: **Save Pose** / **Load Pose** in the main window capture and restore the current pose, and the Dance dialog can **Save .nya** of an analyzed dance and **Load .nya** to play it again without re-solving
 - supports English and Simplified Chinese UI strings through `src/ui/localization.*`
+- shows the build version in the Windows title bar and footer; GitHub release builds use the exact release tag
 
 Key bindings:
 

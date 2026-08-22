@@ -2,6 +2,39 @@ cmake_minimum_required(VERSION 3.22)
 
 project(AnyaDance LANGUAGES CXX)
 
+set(ANYADANCE_VERSION "" CACHE STRING "Version label shown by the AnyaDance UI")
+if(NOT ANYADANCE_VERSION)
+    find_package(Git QUIET)
+    if(Git_FOUND)
+        execute_process(
+            COMMAND "${GIT_EXECUTABLE}" describe --tags --always --dirty
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            OUTPUT_VARIABLE ANYADANCE_VERSION
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+            RESULT_VARIABLE ANYADANCE_GIT_DESCRIBE_RESULT
+        )
+        if(NOT ANYADANCE_GIT_DESCRIBE_RESULT EQUAL 0)
+            set(ANYADANCE_VERSION "")
+        endif()
+    endif()
+    if(NOT ANYADANCE_VERSION)
+        set(ANYADANCE_VERSION "dev")
+    endif()
+endif()
+
+# Release CI passes github.ref_name here, so the visible label and GitHub
+# Release tag are the same value. Keep the generated C++ literals ASCII-safe.
+if(NOT ANYADANCE_VERSION MATCHES "^[0-9A-Za-z][0-9A-Za-z._+-]*$")
+    message(FATAL_ERROR "ANYADANCE_VERSION contains unsupported characters: ${ANYADANCE_VERSION}")
+endif()
+message(STATUS "AnyaDance UI version: ${ANYADANCE_VERSION}")
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/version.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/ui/version.h"
+    @ONLY
+)
+
 if(NOT WIN32)
     message(FATAL_ERROR "AnyaDance targets Windows and SteamVR/OpenVR.")
 endif()
@@ -169,7 +202,10 @@ if(ANYADANCE_BUILD_UI)
         src/ui/theme.cpp
         src/ui/ui.rc
     )
-    target_include_directories(AnyaDanceUI PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_include_directories(AnyaDanceUI PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "${CMAKE_CURRENT_BINARY_DIR}/generated"
+    )
     target_link_libraries(AnyaDanceUI PRIVATE anyadance_core imgui d3d11 dxgi d3dcompiler windowscodecs ole32 shell32 comdlg32 Ws2_32)
     # Ship runtime support files beside the UI: the Dance dialog needs the
     # Blender solve script, and binary redistribution needs the license/notices.
@@ -193,6 +229,7 @@ if(ANYADANCE_BUILD_UI)
             "${CMAKE_CURRENT_SOURCE_DIR}/TRADEMARKS.md"
             "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
             "${CMAKE_CURRENT_SOURCE_DIR}/README.zh-CN.md"
+            "${CMAKE_CURRENT_SOURCE_DIR}/README.ja.md"
             "${ANYADANCE_OUTPUT_DRIVER_ROOT}/"
         COMMENT "Staging UI support files"
     )

@@ -1,6 +1,6 @@
 # 构建
 
-[English](building.md) | **简体中文**
+[English](building.md) | **简体中文** | [日本語](building.ja.md)
 
 ## 前置条件
 

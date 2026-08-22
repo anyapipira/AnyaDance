@@ -1,6 +1,6 @@
 # Building
 
-**English** | [简体中文](building.zh-CN.md)
+**English** | [简体中文](building.zh-CN.md) | [日本語](building.ja.md)
 
 ## Prerequisites
 
@@ -48,6 +48,7 @@ build/out/anyadance/NOTICE
 build/out/anyadance/THIRD_PARTY_NOTICES.md
 build/out/anyadance/README.md
 build/out/anyadance/README.zh-CN.md
+build/out/anyadance/README.ja.md
 ```
 
 The UI builds into the driver folder, so `build/out/anyadance/` is one
@@ -66,4 +67,16 @@ For a dependency-free test-only build:
 cmake -S . -B build-tests -DANYADANCE_BUILD_DRIVER=OFF -DANYADANCE_BUILD_UI=OFF
 cmake --build build-tests --config Debug
 ctest --test-dir build-tests -C Debug --output-on-failure
+```
+
+## UI Version Label
+
+The UI shows its build version in the Windows title bar and its footer. CMake
+uses `git describe --tags --always --dirty` by default, so a build made from an
+exact tag shows that tag. The GitHub release workflow explicitly configures
+`ANYADANCE_VERSION` from `github.ref_name`, which keeps the UI label identical
+to the release tag. A custom build can set the same value manually:
+
+```powershell
+cmake -S . -B build -DANYADANCE_VERSION=v0.0.8
 ```

@@ -1,6 +1,6 @@
 # Troubleshooting
 
-**English** | [简体中文](troubleshooting.zh-CN.md)
+**English** | [简体中文](troubleshooting.zh-CN.md) | [日本語](troubleshooting.ja.md)
 
 ## SteamVR Does Not See The Driver
 
@@ -59,5 +59,5 @@ Check:
 - datagram is smaller than 8192 bytes
 - device ID is one of the six recognized IDs
 - all required fields are present for the device
-- position values are finite and within +/-30 m; Y is within 0–25 m
+- position values are finite and within +/-30 m; Y is within 0–25 m for the HMD and -30–25 m for the other five devices
 - quaternion order is XYZW and squared length is between 0.5 and 1.5

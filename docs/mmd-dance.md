@@ -1,6 +1,6 @@
 # MMD Dance
 
-**English** | [简体中文](mmd-dance.zh-CN.md)
+**English** | [简体中文](mmd-dance.zh-CN.md) | [日本語](mmd-dance.ja.md)
 
 The companion UI can play an MMD dance (a `.vmd` motion) on the six virtual
 devices live in memory. Blender + MMD Tools does the accurate FK/IK solve against

@@ -28,6 +28,7 @@
 #include "ui/localization.h"
 #include "ui/mmd_dance.h"
 #include "ui/theme.h"
+#include "ui/version.h"
 #include "ui/window_size.h"
 
 #include "imgui.h"
@@ -90,7 +91,6 @@ inline constexpr FingerKey kFingerKeys[] = {
 // deflection (1.0) when dragging the empty area of the body panel.
 inline constexpr float kJoystickDragRangePixels = 120.0f;
 inline constexpr wchar_t kWindowClassName[] = L"AnyaDance";
-inline constexpr wchar_t kWindowTitle[] = L"AnyaDance";
 
 // The UDP log is always recorded in English regardless of the UI language.
 inline const char* En(Text id) {

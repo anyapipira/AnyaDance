@@ -463,7 +463,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         return 1;
     }
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
-        if (HWND existing = FindWindowW(kWindowClassName, kWindowTitle)) {
+        if (HWND existing = FindWindowW(kWindowClassName, nullptr)) {
             ShowWindow(existing, SW_RESTORE);
             SetForegroundWindow(existing);
         }

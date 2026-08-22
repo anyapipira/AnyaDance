@@ -1,6 +1,6 @@
 # Device Model
 
-**English** | [简体中文](device-model.zh-CN.md)
+**English** | [简体中文](device-model.zh-CN.md) | [日本語](device-model.ja.md)
 
 ## Public Identifiers
 

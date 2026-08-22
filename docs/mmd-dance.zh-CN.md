@@ -1,6 +1,6 @@
 # MMD 舞蹈
 
-[English](mmd-dance.md) | **简体中文**
+[English](mmd-dance.md) | **简体中文** | [日本語](mmd-dance.ja.md)
 
 伴随 UI 可以把 MMD 舞蹈（一个 `.vmd` 动作）在内存中实时播放到六个虚拟设备上。Blender + MMD Tools 会基于真实模型完成精确的 FK/IK 解算；UI 再做一个小的重映射到硬编码骨架，并像其他姿态一样以 60 Hz 通过 UDP 推送。
 

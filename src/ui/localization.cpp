@@ -32,7 +32,7 @@ const char* const kStrings[kTextCount][kLanguageCount] = {
     /* LanguageLabel         */ {"Language", u8"语言", u8"言語"},
     /* YMax                  */ {"Y MAX", "Y MAX", u8"Y 最大"},
     /* Capture               */ {"Captured", u8"捕获中", u8"操作中"},
-    /* HmdHelp               */ {"HMD: rotate; RMB to move up/down", u8"头显：旋转；右键上下移动", u8"HMD：回転、右ドラッグで上下移動"},
+    /* HmdHelp               */ {"Rotate | RMB: up/down", u8"旋转 | 右键上下", u8"回転 | 右ドラッグ上下"},
     /* KeyLine1              */ {"WASD Move | Q/E Turn | Space Jump | M Menu | V Voice", u8"WASD 移动 | Q/E 转向 | Space 跳跃 | M 菜单 | V 语音", u8"WASD 移動 | Q/E 旋回 | Space ジャンプ | M メニュー | V ボイス"},
     /* KeyLine2              */ {"Z Left Trigger | X Right Trigger | Wheel Fingers (hold 1-0 for one) | Full fist = grip", u8"Z 左扳机 | X 右扳机 | 滚轮开合手指（按住 1-0 控制单指）| 握拳=抓取", u8"Z 左トリガー | X 右トリガー | ホイールで指（1～0で1本）| 握り拳=グリップ"},
     /* MouseHelp             */ {"Box: LMB move XY | MMB rotate | +RMB move Z/roll. Empty: LMB right stick | MMB rotate rig | MMB+RMB roll rig | RMB rig up/down", u8"方框上：左键XY移动 | 中键旋转 | 加右键Z移动/横滚。空白处：左键=右摇杆 | 中键旋转全身 | 中键+右键横滚全身 | 右键升降全身", u8"ボックス：左でXY移動 | 中で回転 | +右でZ移動/ロール。空白：左=右スティック | 中=リグ回転 | 中+右=リグロール | 右=リグ上下"},

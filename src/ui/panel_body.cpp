@@ -62,6 +62,16 @@ void DeviceBox(HWND hwnd, DeviceIndex deviceIndex, ImVec2 size, bool miniMode = 
     const ImVec2 min = ImGui::GetItemRectMin();
     const ImVec2 max = ImGui::GetItemRectMax();
     ImDrawList* draw = ImGui::GetWindowDrawList();
+    const ImVec4 textClip(
+        min.x + 8.0f, min.y + 6.0f,
+        std::max(min.x + 8.0f, max.x - 8.0f),
+        std::max(min.y + 6.0f, max.y - 6.0f));
+    const float textWidth = std::max(1.0f, textClip.z - textClip.x);
+    const auto addClippedText = [&](const ImVec2& position, ImU32 color, const char* text, float wrapWidth = 0.0f) {
+        draw->AddText(
+            ImGui::GetFont(), ImGui::GetFontSize(), position, color,
+            text, nullptr, wrapWidth, &textClip);
+    };
     // Region accent (head/hands/hip/feet) tints the card so the body reads at a
     // glance: a dark accent-tinted fill, an accent border that brightens on hover,
     // and the device name in a light accent.
@@ -77,25 +87,31 @@ void DeviceBox(HWND hwnd, DeviceIndex deviceIndex, ImVec2 size, bool miniMode = 
     draw->AddRectFilled(min, max, bg, 6.0f);
     draw->AddRect(min, max, border, 6.0f, 0, hovered ? 2.0f : 1.0f);
     ImVec2 textPos = ImVec2(min.x + 10.0f, min.y + 8.0f);
-    draw->AddText(textPos, nameCol, DeviceName(slot));
-    textPos.y += 20.0f;
+    const char* deviceName = DeviceName(slot);
+    const float nameWrapWidth = miniMode ? textWidth : 0.0f;
+    addClippedText(textPos, nameCol, deviceName, nameWrapWidth);
+    const float nameHeight = ImGui::CalcTextSize(deviceName, nullptr, false, nameWrapWidth).y;
+    textPos.y += std::max(20.0f, nameHeight + 2.0f);
     if (!miniMode) {
         const std::string pos = PoseSummary(device);
-        draw->AddText(textPos, IM_COL32(198, 205, 214, 255), pos.c_str());
+        addClippedText(textPos, IM_COL32(198, 205, 214, 255), pos.c_str());
         textPos.y += 18.0f;
         const std::string rot = RotationSummary(device);
-        draw->AddText(textPos, IM_COL32(198, 205, 214, 255), rot.c_str());
+        addClippedText(textPos, IM_COL32(198, 205, 214, 255), rot.c_str());
         textPos.y += 18.0f;
     }
     if (g_app.captureActive && !g_app.dragRig && g_app.dragDevice == deviceIndex) {
-        draw->AddText(textPos, IM_COL32(107, 203, 119, 255), Tr(Text::Capture));
+        addClippedText(textPos, IM_COL32(107, 203, 119, 255), Tr(Text::Capture), textWidth);
         textPos.y += 18.0f;
     }
     if (device.position.y <= MinDeviceY(deviceIndex) || device.position.y >= kMaxDeviceY || device.y_clamped) {
-        draw->AddText(ImVec2(max.x - 56.0f, min.y + 8.0f), IM_COL32(255, 196, 87, 255), Tr(Text::YMax));
+        const float warningWidth = ImGui::CalcTextSize(Tr(Text::YMax)).x;
+        addClippedText(
+            ImVec2(std::max(textClip.x, textClip.z - warningWidth), min.y + 8.0f),
+            IM_COL32(255, 196, 87, 255), Tr(Text::YMax));
     }
     if (!miniMode && deviceIndex == DeviceIndex::Hmd) {
-        draw->AddText(textPos, IM_COL32(164, 174, 187, 255), Tr(Text::HmdHelp));
+        addClippedText(textPos, IM_COL32(164, 174, 187, 255), Tr(Text::HmdHelp));
     }
     if (leftClicked) {
         BeginMouseCapture(hwnd, deviceIndex, VK_LBUTTON);
@@ -155,9 +171,13 @@ void RenderBodyPanel(HWND hwnd, bool miniMode) {
         }
     }
     if (!miniMode) {
-        const float instructionH = ImGui::GetTextLineHeightWithSpacing() * 2.0f;
-        ImGui::BeginChild("mouse_help", ImVec2(panelW - 12.0f, instructionH), false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + panelW - 12.0f);
+        const float helpWidth = std::max(1.0f, panelW - 12.0f);
+        const float wrappedHelpHeight = ImGui::CalcTextSize(Tr(Text::MouseHelp), nullptr, false, helpWidth).y;
+        const float instructionH = std::max(
+            ImGui::GetTextLineHeightWithSpacing() * 2.0f,
+            wrappedHelpHeight + ImGui::GetStyle().ItemSpacing.y);
+        ImGui::BeginChild("mouse_help", ImVec2(helpWidth, instructionH), false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + helpWidth);
         ImGui::TextUnformatted(Tr(Text::MouseHelp));
         ImGui::PopTextWrapPos();
         ImGui::EndChild();

@@ -6,6 +6,8 @@
 
 **English** | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
 
+> **Want to use AnyaDance?** [Download a prebuilt Windows package from GitHub Releases](https://github.com/anyapipira/AnyaDance/releases). You do not need to clone or build this repository unless you want to develop AnyaDance or build it yourself.
+
 AnyaDance is a Windows toolkit for driving and animating a VRChat avatar's full body — pose it by hand, drive it live, or play an MMD dance on it. At its core is a SteamVR/OpenVR virtual-device driver plus a companion UI (`AnyaDance.exe`) that streams to it. The driver exposes six virtual devices for VRChat full-body testing:
 
 - HMD

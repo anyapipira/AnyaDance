@@ -136,6 +136,14 @@ void LoadPreferences(HWND hwnd) {
             std::string value;
             in >> std::quoted(value);
             CopyPreferenceString(g_app.danceMmdToolsPath, sizeof(g_app.danceMmdToolsPath), value);
+        } else if (key == "dance_audio_offset") {
+            in >> g_app.danceAudioOffset;
+            if (!std::isfinite(g_app.danceAudioOffset)) {
+                g_app.danceAudioOffset = 0.0f;
+            }
+            g_app.danceAudioOffset = std::clamp(g_app.danceAudioOffset, -3600.0f, 3600.0f);
+        } else if (key == "dance_audio_device") {
+            in >> std::quoted(g_app.danceAudioOutputDeviceId);
         } else if (key == "window") {
             int x = 100;
             int y = 100;
@@ -147,6 +155,13 @@ void LoadPreferences(HWND hwnd) {
             h = std::max(h, static_cast<int>(minWindow.cy));
             MoveWindow(hwnd, x, y, w, h, FALSE);
             EnsureMinimumClientArea(hwnd, MinClientWidth(), MinClientHeight());
+        }
+    }
+    if (!g_app.danceAudioOutputDeviceId.empty() && !g_app.danceAudio.OutputDevices().empty()) {
+        std::string error;
+        if (!g_app.danceAudio.SelectOutputDeviceById(g_app.danceAudioOutputDeviceId, error)) {
+            g_app.danceAudioOutputDeviceId.clear();
+            g_app.danceStatus = error;
         }
     }
 }
@@ -164,6 +179,14 @@ void SavePreferences(HWND hwnd) {
     out << "ui_mode " << UiModeCode(g_app.uiMode) << '\n';
     out << "dance_blender_path " << std::quoted(std::string(g_app.danceBlenderPath)) << '\n';
     out << "dance_mmd_tools_path " << std::quoted(std::string(g_app.danceMmdToolsPath)) << '\n';
+    out << "dance_audio_offset " << g_app.danceAudioOffset << '\n';
+    const int audioDevice = g_app.danceAudio.SelectedOutputDevice();
+    const auto& audioDevices = g_app.danceAudio.OutputDevices();
+    const std::string audioDeviceId =
+        audioDevice >= 0 && audioDevice < static_cast<int>(audioDevices.size())
+            ? audioDevices[static_cast<std::size_t>(audioDevice)].id
+            : g_app.danceAudioOutputDeviceId;
+    out << "dance_audio_device " << std::quoted(audioDeviceId) << '\n';
     out << "window " << rect.left << ' ' << rect.top << ' ' << (rect.right - rect.left) << ' ' << (rect.bottom - rect.top) << '\n';
 }
 
@@ -391,22 +414,49 @@ ImFont* LoadUiFont(ImGuiIO& io) {
     config.OversampleV = 2;
     config.RasterizerMultiply = 1.15f;
     const char* fontCandidates[] = {
+        "C:\\Windows\\Fonts\\NotoSansCJK-Regular.ttc",
         "C:\\Windows\\Fonts\\msyh.ttc",
         "C:\\Windows\\Fonts\\msyh.ttf",
         "C:\\Windows\\Fonts\\simhei.ttf",
         "C:\\Windows\\Fonts\\simsun.ttc",
-        "C:\\Windows\\Fonts\\NotoSansCJK-Regular.ttc",
         "C:\\Windows\\Fonts\\NotoSansSC-Regular.otf",
     };
+    ImFont* font = nullptr;
     for (const char* path : fontCandidates) {
         if (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
             continue;
         }
-        if (ImFont* font = io.Fonts->AddFontFromFileTTF(path, 16.0f, &config, ranges)) {
-            return font;
+        font = io.Fonts->AddFontFromFileTTF(path, 16.0f, &config, ranges);
+        if (font) {
+            break;
         }
     }
-    return io.Fonts->AddFontDefault();
+    if (!font) {
+        font = io.Fonts->AddFontDefault();
+    }
+
+    // Merge a native Japanese font into the primary CJK font. Windows' Chinese
+    // fonts do not consistently contain kana, while Japanese fonts do not
+    // consistently contain every Simplified Chinese glyph used by the UI.
+    const char* japaneseFontCandidates[] = {
+        "C:\\Windows\\Fonts\\YuGothR.ttc",
+        "C:\\Windows\\Fonts\\YuGothM.ttc",
+        "C:\\Windows\\Fonts\\meiryo.ttc",
+        "C:\\Windows\\Fonts\\msgothic.ttc",
+        "C:\\Windows\\Fonts\\NotoSansJP-Regular.otf",
+    };
+    ImFontConfig mergeConfig = config;
+    mergeConfig.MergeMode = true;
+    mergeConfig.DstFont = font;
+    for (const char* path : japaneseFontCandidates) {
+        if (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
+            continue;
+        }
+        if (io.Fonts->AddFontFromFileTTF(path, 16.0f, &mergeConfig, ranges)) {
+            break;
+        }
+    }
+    return font;
 }
 
 enum class DisclaimerAction { None, Accept, Quit };
@@ -463,7 +513,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         return 1;
     }
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
-        if (HWND existing = FindWindowW(kWindowClassName, kWindowTitle)) {
+        if (HWND existing = FindWindowW(kWindowClassName, nullptr)) {
             ShowWindow(existing, SW_RESTORE);
             SetForegroundWindow(existing);
         }
@@ -556,6 +606,15 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         &g_footerBannerWidth,
         &g_footerBannerHeight
     );
+
+    if (SUCCEEDED(comInit)) {
+        std::string audioError;
+        if (!g_app.danceAudio.Initialize(audioError)) {
+            g_app.danceStatus = audioError;
+        }
+    } else {
+        g_app.danceStatus = "Audio initialization requires COM.";
+    }
 
     LoadPreferences(hwnd);
     ShowWindow(hwnd, nCmdShow == 0 ? SW_SHOWDEFAULT : nCmdShow);
@@ -651,6 +710,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     ReleaseMouseCapture();
     SavePreferences(hwnd);
     g_app.streamer.Stop();
+    g_app.danceAudio.Shutdown();
 
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();

@@ -295,6 +295,8 @@ void RenderUi(HWND hwnd) {
             g_app.streamer.SetLocalizedResults(En(Text::Sent), En(Text::Failed), En(Text::SocketErrorReason), En(Text::ReleaseReason));
         }
     }
+    ImGui::SameLine();
+    ImGui::TextDisabled("AnyaDance %s", kVersion);
     ImGui::TextUnformatted(Tr(Text::KeyLine1));
     ImGui::TextUnformatted(Tr(Text::KeyLine2));
     ImGui::PopTextWrapPos();

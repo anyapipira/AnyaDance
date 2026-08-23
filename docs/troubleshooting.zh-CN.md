@@ -1,6 +1,6 @@
 # 故障排查
 
-[English](troubleshooting.md) | **简体中文**
+[English](troubleshooting.md) | **简体中文** | [日本語](troubleshooting.ja.md)
 
 ## SteamVR 看不到驱动
 
@@ -59,5 +59,5 @@
 - 数据报小于 8192 字节
 - 设备 ID 是六个可识别 ID 之一
 - 该设备所有必需字段都存在
-- 位置值为有限数值且位于 ±30 m 范围内；Y 位于 0–25 m 范围内
+- 位置值为有限数值且位于 ±30 m 范围内；HMD 的 Y 位于 0–25 m，其他五个设备位于 -30–25 m
 - 四元数顺序为 XYZW，且平方长度在 0.5 与 1.5 之间

@@ -9,6 +9,7 @@ namespace anyadance::ui {
 enum class Language : std::size_t {
     English = 0,
     ChineseSimplified,
+    Japanese,
     Count,
 };
 
@@ -96,6 +97,14 @@ enum class Text : std::size_t {
     DanceAdvanced,
     DanceBlenderPath,
     DanceMmdToolsPath,
+    DanceAudio,
+    DanceAudioOffset,
+    DanceAudioOffsetHelp,
+    DanceAudioOutput,
+    DanceAudioRefresh,
+    DanceAudioRemove,
+    DanceAudioLoaded,
+    DanceAudioLoadFailed,
     DanceSaveNya,
     DanceLoadNya,
     PoseSave,

@@ -1,6 +1,6 @@
 # UDP Protocol
 
-**English** | [简体中文](protocol.zh-CN.md)
+**English** | [简体中文](protocol.zh-CN.md) | [日本語](protocol.ja.md)
 
 ## Transport
 

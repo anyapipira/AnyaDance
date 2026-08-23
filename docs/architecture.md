@@ -1,6 +1,6 @@
 # Architecture
 
-**English** | [简体中文](architecture.zh-CN.md)
+**English** | [简体中文](architecture.zh-CN.md) | [日本語](architecture.ja.md)
 
 AnyaDance has three runtime parts:
 

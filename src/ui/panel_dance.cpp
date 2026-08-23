@@ -25,11 +25,19 @@ void StartDanceExport() {
     g_app.danceFuture = std::async(std::launch::async, [config] { return RunMmdExport(config); });
 }
 
+DanceTransportRange DanceTransport() {
+    return BuildDanceTransportRange(
+        g_app.danceMotion.valid ? g_app.danceMotion.duration : 0.0,
+        g_app.danceAudio.HasAudio(),
+        g_app.danceAudio.DurationSeconds(),
+        g_app.danceAudioOffset);
+}
+
 float ClampDanceElapsed(float elapsed) {
     if (!g_app.danceMotion.valid || g_app.danceMotion.duration <= 0.0f) {
         return 0.0f;
     }
-    return std::clamp(elapsed, 0.0f, g_app.danceMotion.duration);
+    return static_cast<float>(NormalizeDanceTransportTime(elapsed, DanceTransport(), false));
 }
 
 float DanceTimelineElapsed() {
@@ -40,11 +48,10 @@ float DanceTimelineElapsed() {
         return ClampDanceElapsed(g_app.dancePausedElapsed);
     }
     const auto now = std::chrono::steady_clock::now();
-    const float elapsed = std::chrono::duration<float>(now - g_app.danceStartTime).count() * g_app.danceSpeed;
-    if (g_app.danceLoop) {
-        return std::fmod(std::max(0.0f, elapsed), g_app.danceMotion.duration);
-    }
-    return ClampDanceElapsed(elapsed);
+    const float elapsed =
+        std::chrono::duration<float>(now - g_app.danceStartTime).count() * g_app.danceSpeed;
+    return static_cast<float>(NormalizeDanceTransportTime(
+        elapsed, DanceTransport(), g_app.danceLoop));
 }
 
 void SetDanceStartForElapsed(float elapsed) {
@@ -54,11 +61,15 @@ void SetDanceStartForElapsed(float elapsed) {
     g_app.danceStartTime = std::chrono::steady_clock::now() - offset;
 }
 
-void ApplyDanceFrameAt(float elapsed) {
+void ApplyDanceFrameAt(float transportElapsed) {
     if (!g_app.danceMotion.valid) {
         return;
     }
-    FrameState danceFrame = SampleDanceMotion(g_app.danceMotion, elapsed, g_app.danceLoop);
+    const float motionElapsed = static_cast<float>(MotionTimeForDanceTransport(
+        transportElapsed, g_app.danceMotion.duration));
+    // The combined transport owns looping. Motion sampling clamps so an audio
+    // intro/outro holds the first/last pose instead of independently looping.
+    FrameState danceFrame = SampleDanceMotion(g_app.danceMotion, motionElapsed, false);
     AnchorDanceFrame(danceFrame, g_app.danceRootX, g_app.danceRootZ);
 
     const std::array<ControllerState, 2> danceControllers = danceFrame.controllers;
@@ -87,13 +98,22 @@ void SeekDancePlayback(float elapsed) {
     // Re-rooting here from g_app.frame would accumulate because the frame already
     // has the previous root baked in via AnchorDanceFrame.
     ApplyDanceFrameAt(elapsed);
+    const DanceAudioPosition audio = AudioPositionForDanceTransport(
+        elapsed, g_app.danceAudio.DurationSeconds(), g_app.danceAudioOffset);
+    g_app.danceAudio.Synchronize(
+        audio.seconds, g_app.dancePlaying && !g_app.dancePaused && audio.active);
 }
 
 void StartDancePlayback() {
     if (!g_app.danceMotion.valid) {
         return;
     }
-    const float startElapsed = ClampDanceElapsed(g_app.dancePausedElapsed);
+    const DanceTransportRange range = DanceTransport();
+    float startElapsed = ClampDanceElapsed(g_app.dancePausedElapsed);
+    if (!g_app.danceLoop && startElapsed >= static_cast<float>(range.end) - 0.0001f) {
+        startElapsed = static_cast<float>(range.start);
+        g_app.dancePausedElapsed = startElapsed;
+    }
     g_app.dancePlaying = true;
     g_app.dancePaused = false;
     SetDanceStartForElapsed(startElapsed);
@@ -101,6 +121,7 @@ void StartDancePlayback() {
     const DeviceState& hmd = g_app.frame.devices[DeviceSlot(DeviceIndex::Hmd)];
     g_app.danceRootX = hmd.position.x;
     g_app.danceRootZ = hmd.position.z;
+    ApplyDanceFrameAt(startElapsed);
 }
 
 // Freeze playback on the current pose. The elapsed offset is remembered so Resume
@@ -111,6 +132,7 @@ void PauseDancePlayback() {
     }
     g_app.dancePausedElapsed = DanceTimelineElapsed();
     g_app.dancePaused = true;
+    g_app.danceAudio.StopPlayback();
 }
 
 // Re-anchor danceStartTime so UpdateDancePlayback continues from the paused offset,
@@ -129,7 +151,8 @@ void ResumeDancePlayback() {
 void StopDanceToTPose() {
     g_app.dancePlaying = false;
     g_app.dancePaused = false;
-    g_app.dancePausedElapsed = 0.0f;
+    g_app.dancePausedElapsed = static_cast<float>(DanceTransport().start);
+    g_app.danceAudio.StopPlayback();
     g_app.frame = BuildResetTPose(g_app.frame);
 }
 
@@ -141,7 +164,8 @@ void StopDancePlayback() {
     }
     g_app.dancePlaying = false;
     g_app.dancePaused = false;
-    g_app.dancePausedElapsed = 0.0f;
+    g_app.dancePausedElapsed = static_cast<float>(DanceTransport().start);
+    g_app.danceAudio.StopPlayback();
     g_app.frame = MakeStandingPose();
     g_app.streamer.UpdateFrame(g_app.frame, En(Text::PoseStanding), false);
 }
@@ -153,7 +177,8 @@ void StopDancePlayback() {
 void RestorePose(const FrameState& pose, const char* reason) {
     g_app.dancePlaying = false;
     g_app.dancePaused = false;
-    g_app.dancePausedElapsed = 0.0f;
+    g_app.dancePausedElapsed = static_cast<float>(DanceTransport().start);
+    g_app.danceAudio.StopPlayback();
     for (std::size_t d = 0; d < g_app.frame.devices.size(); ++d) {
         g_app.frame.devices[d].position = pose.devices[d].position;
         g_app.frame.devices[d].rotation = pose.devices[d].rotation;
@@ -200,7 +225,8 @@ void PollDanceExport() {
     }
     g_app.dancePlaying = false;
     g_app.dancePaused = false;
-    g_app.dancePausedElapsed = 0.0f;
+    g_app.dancePausedElapsed = static_cast<float>(DanceTransport().start);
+    g_app.danceAudio.StopPlayback();
     char buf[160];
     std::snprintf(buf, sizeof(buf), "Ready: %.1fs, %zu frames, fingers %s, scale %.2f",
                   g_app.danceMotion.duration,
@@ -217,12 +243,21 @@ void UpdateDancePlayback() {
     if (!g_app.dancePlaying || g_app.dancePaused || !g_app.danceMotion.valid) {
         return;  // paused playback holds the last streamed pose in place
     }
-    float elapsed = DanceTimelineElapsed();
-    if (!g_app.danceLoop && g_app.danceMotion.duration > 0.0f && elapsed >= g_app.danceMotion.duration) {
-        elapsed = g_app.danceMotion.duration;  // hold the final pose at the end
-    }
+    const float elapsed = DanceTimelineElapsed();
     g_app.dancePausedElapsed = elapsed;
     ApplyDanceFrameAt(elapsed);
+    const DanceAudioPosition audio = AudioPositionForDanceTransport(
+        elapsed, g_app.danceAudio.DurationSeconds(), g_app.danceAudioOffset);
+    g_app.danceAudio.Synchronize(audio.seconds, audio.active);
+    const DanceTransportRange range = DanceTransport();
+    if (!g_app.danceLoop && elapsed >= static_cast<float>(range.end)) {
+        // Leave the final pose applied, but finish the transport so Play can
+        // restart the combined motion/audio interval from its beginning.
+        g_app.dancePausedElapsed = static_cast<float>(range.end);
+        g_app.dancePlaying = false;
+        g_app.dancePaused = false;
+        g_app.danceAudio.StopPlayback();
+    }
 }
 
 // File-picker helpers for the dance dialog; fill the target buffer on success.
@@ -230,6 +265,27 @@ void BrowseInto(HWND hwnd, char* buffer, std::size_t size, Text label, const cha
     const std::string picked = OpenFileDialog(hwnd, Tr(label), Tr(label), pattern);
     if (!picked.empty()) {
         std::snprintf(buffer, size, "%s", picked.c_str());
+    }
+}
+
+void RestartDanceTransportAtBeginning() {
+    g_app.danceAudio.StopPlayback();
+    g_app.dancePlaying = false;
+    g_app.dancePaused = false;
+    g_app.dancePausedElapsed = static_cast<float>(DanceTransport().start);
+    if (g_app.danceMotion.valid) {
+        ApplyDanceFrameAt(g_app.dancePausedElapsed);
+    }
+}
+
+void PreserveDanceTransport(float elapsed) {
+    g_app.danceAudio.StopPlayback();
+    g_app.dancePausedElapsed = ClampDanceElapsed(elapsed);
+    if (g_app.dancePlaying && !g_app.dancePaused) {
+        SetDanceStartForElapsed(g_app.dancePausedElapsed);
+    }
+    if (g_app.danceMotion.valid) {
+        ApplyDanceFrameAt(g_app.dancePausedElapsed);
     }
 }
 
@@ -273,7 +329,8 @@ void RenderDanceDialog(HWND hwnd) {
     const ImGuiStyle& style = ImGui::GetStyle();
     const float browseWidth = ImGui::CalcTextSize(Tr(Text::DanceBrowse)).x + style.FramePadding.x * 2.0f;
     float labelColumn = 0.0f;
-    for (Text label : {Text::DanceVmd, Text::DanceModel, Text::DanceBlenderPath, Text::DanceMmdToolsPath}) {
+    for (Text label : {Text::DanceVmd, Text::DanceModel, Text::DanceAudio,
+                       Text::DanceBlenderPath, Text::DanceMmdToolsPath}) {
         labelColumn = std::max(labelColumn, ImGui::CalcTextSize(Tr(label)).x);
     }
     auto pathRow = [&](const char* id, Text label, char* buffer, std::size_t size, auto&& onBrowse) {
@@ -298,6 +355,106 @@ void RenderDanceDialog(HWND hwnd) {
     pathRow("model", Text::DanceModel, g_app.danceModelPath, sizeof(g_app.danceModelPath), [&] {
         BrowseInto(hwnd, g_app.danceModelPath, sizeof(g_app.danceModelPath), Text::DanceModel, "*.pmx;*.pmd");
     });
+    pathRow("audio", Text::DanceAudio, g_app.danceAudioPath, sizeof(g_app.danceAudioPath), [&] {
+        const std::string picked = OpenFileDialog(
+            hwnd, Tr(Text::DanceAudio), Tr(Text::DanceAudio), "*.wav;*.mp3;*.m4a;*.aac;*.wma");
+        if (picked.empty()) {
+            return;
+        }
+        std::string error;
+        if (g_app.danceAudio.Load(picked, error)) {
+            CopyPreferenceString(g_app.danceAudioPath, sizeof(g_app.danceAudioPath), picked);
+            RestartDanceTransportAtBeginning();
+            char status[256] = {};
+            std::snprintf(status, sizeof(status), Tr(Text::DanceAudioLoaded),
+                          g_app.danceAudio.DurationSeconds());
+            g_app.danceStatus = status;
+        } else {
+            char status[768] = {};
+            std::snprintf(status, sizeof(status), Tr(Text::DanceAudioLoadFailed), error.c_str());
+            g_app.danceStatus = status;
+        }
+    });
+
+    const float audioControlX = ImGui::GetCursorPosX() + labelColumn + style.ItemSpacing.x;
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(Tr(Text::DanceAudioOffset));
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(audioControlX);
+    const float elapsedBeforeOffsetEdit = DanceTimelineElapsed();
+    ImGui::SetNextItemWidth(150.0f);
+    if (ImGui::InputFloat("##dance_audio_offset", &g_app.danceAudioOffset, 0.01f, 0.10f, "%.3f")) {
+        g_app.danceAudioOffset = std::clamp(g_app.danceAudioOffset, -3600.0f, 3600.0f);
+        if (g_app.dancePlaying) {
+            PreserveDanceTransport(elapsedBeforeOffsetEdit);
+        } else {
+            RestartDanceTransportAtBeginning();
+        }
+    }
+    ImGui::SetCursorPosX(audioControlX);
+    ImGui::PushTextWrapPos(620.0f);
+    ImGui::TextDisabled("%s", Tr(Text::DanceAudioOffsetHelp));
+    ImGui::PopTextWrapPos();
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(Tr(Text::DanceAudioOutput));
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(audioControlX);
+    const auto& devices = g_app.danceAudio.OutputDevices();
+    const int selectedDevice = g_app.danceAudio.SelectedOutputDevice();
+    const char* selectedDeviceName =
+        selectedDevice >= 0 && selectedDevice < static_cast<int>(devices.size())
+            ? devices[static_cast<std::size_t>(selectedDevice)].name.c_str()
+            : "--";
+    const float refreshWidth = ImGui::CalcTextSize(Tr(Text::DanceAudioRefresh)).x +
+        style.FramePadding.x * 2.0f;
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - refreshWidth - style.ItemSpacing.x);
+    if (ImGui::BeginCombo("##dance_audio_output", selectedDeviceName)) {
+        for (std::size_t i = 0; i < devices.size(); ++i) {
+            const bool selected = static_cast<int>(i) == selectedDevice;
+            if (ImGui::Selectable(devices[i].name.c_str(), selected)) {
+                std::string error;
+                if (g_app.danceAudio.SelectOutputDevice(static_cast<int>(i), error)) {
+                    g_app.danceAudioOutputDeviceId = devices[i].id;
+                } else {
+                    g_app.danceStatus = error;
+                }
+            }
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(Tr(Text::DanceAudioRefresh), ImVec2(refreshWidth, 0.0f))) {
+        const std::string previousId =
+            selectedDevice >= 0 && selectedDevice < static_cast<int>(devices.size())
+                ? devices[static_cast<std::size_t>(selectedDevice)].id
+                : g_app.danceAudioOutputDeviceId;
+        std::string error;
+        if (!g_app.danceAudio.RefreshOutputDevices(error)) {
+            g_app.danceStatus = error;
+        } else if (!previousId.empty() &&
+                   g_app.danceAudio.SelectOutputDeviceById(previousId, error)) {
+            g_app.danceAudioOutputDeviceId = previousId;
+        } else if (!g_app.danceAudio.OutputDevices().empty() &&
+                   g_app.danceAudio.SelectOutputDevice(0, error)) {
+            g_app.danceAudioOutputDeviceId = g_app.danceAudio.OutputDevices()[0].id;
+        } else if (!error.empty()) {
+            g_app.danceStatus = error;
+        }
+    }
+
+    if (g_app.danceAudio.HasAudio()) {
+        ImGui::SetCursorPosX(audioControlX);
+        if (ImGui::Button(Tr(Text::DanceAudioRemove))) {
+            const float currentElapsed = DanceTimelineElapsed();
+            g_app.danceAudio.Unload();
+            g_app.danceAudioPath[0] = '\0';
+            PreserveDanceTransport(currentElapsed);
+        }
+    }
 
     // Analyze runs the Blender solve and lives right under the inputs it consumes.
     ImGui::BeginDisabled(g_app.danceConverting);
@@ -324,12 +481,16 @@ void RenderDanceDialog(HWND hwnd) {
     }
 
     ImGui::Separator();
-    const float duration = g_app.danceMotion.valid ? g_app.danceMotion.duration : 0.0f;
+    const DanceTransportRange transport = DanceTransport();
+    const float duration = static_cast<float>(transport.end - transport.start);
     float timeline = DanceTimelineElapsed();
-    ImGui::Text("%s: %.2fs / %.2fs", Tr(Text::DanceTimeline), timeline, duration);
+    ImGui::Text("%s: %.2fs (%.2f .. %.2f)", Tr(Text::DanceTimeline), timeline,
+                transport.start, transport.end);
     ImGui::BeginDisabled(!g_app.danceMotion.valid || duration <= 0.0f);
     ImGui::SetNextItemWidth(-1.0f);
-    if (ImGui::SliderFloat("##dance_timeline", &timeline, 0.0f, duration, "")) {
+    if (ImGui::SliderFloat("##dance_timeline", &timeline,
+                           static_cast<float>(transport.start),
+                           static_cast<float>(transport.end), "")) {
         SeekDancePlayback(timeline);
     }
     ImGui::EndDisabled();
@@ -406,7 +567,8 @@ void RenderDanceDialog(HWND hwnd) {
                     g_app.danceLoop = clip.loop;
                     g_app.dancePlaying = false;
                     g_app.dancePaused = false;
-                    g_app.dancePausedElapsed = 0.0f;
+                    g_app.dancePausedElapsed = static_cast<float>(DanceTransport().start);
+                    g_app.danceAudio.StopPlayback();
                     char buf[160];
                     std::snprintf(buf, sizeof(buf), "Loaded %zu frames, %.1fs, fingers %s. Press Play.",
                                   clip.motion.frames.size(), clip.motion.duration,

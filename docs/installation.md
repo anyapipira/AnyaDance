@@ -1,6 +1,6 @@
 # Installation
 
-**English** | [简体中文](installation.zh-CN.md)
+**English** | [简体中文](installation.zh-CN.md) | [日本語](installation.ja.md)
 
 ## Install A Release
 

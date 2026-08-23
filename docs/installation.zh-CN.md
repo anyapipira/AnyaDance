@@ -1,6 +1,6 @@
 # 安装
 
-[English](installation.md) | **简体中文**
+[English](installation.md) | **简体中文** | [日本語](installation.ja.md)
 
 ## 安装发布版本
 

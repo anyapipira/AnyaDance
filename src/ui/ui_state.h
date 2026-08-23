@@ -13,6 +13,7 @@
 #include <d3d11.h>
 
 #include "core/constants.h"
+#include "core/dance_transport.h"
 #include "core/finger_control.h"
 #include "core/frame_state.h"
 #include "core/input_state.h"
@@ -25,9 +26,11 @@
 #include "core/udp_log.h"
 #include "ui/driver_control.h"
 #include "ui/driver_log_listener.h"
+#include "ui/audio_player.h"
 #include "ui/localization.h"
 #include "ui/mmd_dance.h"
 #include "ui/theme.h"
+#include "ui/version.h"
 #include "ui/window_size.h"
 
 #include "imgui.h"
@@ -90,7 +93,6 @@ inline constexpr FingerKey kFingerKeys[] = {
 // deflection (1.0) when dragging the empty area of the body panel.
 inline constexpr float kJoystickDragRangePixels = 120.0f;
 inline constexpr wchar_t kWindowClassName[] = L"AnyaDance";
-inline constexpr wchar_t kWindowTitle[] = L"AnyaDance";
 
 // The UDP log is always recorded in English regardless of the UI language.
 inline const char* En(Text id) {
@@ -414,6 +416,7 @@ struct AppState {
     bool danceDialogOpen = false;
     char danceVmdPath[1024] = {};
     char danceModelPath[1024] = {};
+    char danceAudioPath[1024] = {};
     char danceBlenderPath[1024] = {};   // Advanced: blender.exe (auto-filled)
     char danceMmdToolsPath[1024] = {};  // Advanced: MMD Tools dir (auto-filled)
     // Fixed playback and remap defaults used by the dance dialog.
@@ -422,6 +425,9 @@ struct AppState {
     float danceFps = 60.0f;
     float danceHandReach = 1.22f;
     bool danceLoop = true;
+    float danceAudioOffset = 0.0f;  // audio start time relative to motion frame zero
+    std::string danceAudioOutputDeviceId;
+    AudioPlayer danceAudio;
     std::string danceStatus;
     bool danceConverting = false;
     std::future<MmdExportResult> danceFuture;

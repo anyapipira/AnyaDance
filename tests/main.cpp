@@ -24,6 +24,9 @@ int main() {
     TestMmdRetarget();
     TestNya();
     TestUiLayout();
+    TestLocalization();
+    TestDanceTransport();
+    TestAudioPlayer();
 
     const int failures = anyadance::testing::Failures();
     if (failures != 0) {

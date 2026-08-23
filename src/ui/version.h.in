@@ -1,0 +1,8 @@
+#pragma once
+
+namespace anyadance::ui {
+
+inline constexpr char kVersion[] = "@ANYADANCE_VERSION@";
+inline constexpr wchar_t kWindowTitle[] = L"AnyaDance @ANYADANCE_VERSION@";
+
+} // namespace anyadance::ui

@@ -4,7 +4,9 @@
   <img src="docs/images/ui_main_zh.png" alt="AnyaDance 主界面" width="50%"><img src="docs/images/ui_mmd_zh.png" alt="AnyaDance MMD 界面" width="50%">
 </p>
 
-[English](README.md) | **简体中文**
+[English](README.md) | **简体中文** | [日本語](README.ja.md)
+
+> **想直接使用 AnyaDance？** [从 GitHub Releases 下载预编译的 Windows 软件包](https://github.com/anyapipira/AnyaDance/releases)。除非你想参与开发或自行构建，否则无需克隆或编译此仓库。
 
 AnyaDance 是一个用于驱动与制作 VRChat 虚拟形象全身动作的 Windows 工具集——你可以手动摆姿势、实时驱动，或在其上播放 MMD 舞蹈。其核心是一个 SteamVR/OpenVR 虚拟设备驱动，外加一个向其推送数据的伴随程序（`AnyaDance.exe`）。驱动向 VRChat 全身追踪测试提供六个虚拟设备：
 
@@ -83,6 +85,7 @@ build\out\anyadance\DISCLAIMER.md
 build\out\anyadance\TRADEMARKS.md
 build\out\anyadance\README.md
 build\out\anyadance\README.zh-CN.md
+build\out\anyadance\README.ja.md
 build\out\AnyaDance.zip
 ```
 
@@ -166,7 +169,8 @@ UI 中的 **监视驱动命令** 开关默认关闭，并会记住你的选择�
 - 提供“窗口置顶”复选框，可将窗口固定在其他窗口之上；该选择会在多次运行间记住
 - 可播放 MMD 舞蹈：点击 **舞蹈 (MMD)** 选择 `.vmd` 动作和 `.pmx`/`.pmd` 模型，分析后即可把舞蹈实时推送到六个设备（见 [docs/mmd-dance.zh-CN.md](docs/mmd-dance.zh-CN.md)）
 - 可将姿势与舞蹈保存为 `.nya` 片段：主窗口的 **保存姿势** / **加载姿势** 用于捕获并恢复当前姿势；舞蹈对话框可 **保存 .nya**（已分析的舞蹈）并 **加载 .nya** 直接重新播放，无需再次解算
-- 通过 `src/ui/localization.*` 与本地化表支持英文与简体中文界面
+- 通过 `src/ui/localization.*` 与本地化表支持英文、简体中文与日文界面
+- 在 Windows 标题栏和页脚显示构建版本；GitHub 发布构建使用完全相同的发布标签
 
 按键绑定：
 

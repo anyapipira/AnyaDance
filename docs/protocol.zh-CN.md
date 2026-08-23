@@ -1,6 +1,6 @@
 # UDP 协议
 
-[English](protocol.md) | **简体中文**
+[English](protocol.md) | **简体中文** | [日本語](protocol.ja.md)
 
 ## 传输
 

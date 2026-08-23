@@ -23,5 +23,7 @@ void TestMmdRetarget();
 void TestNya();
 void TestUiLayout();
 void TestLocalization();
+void TestDanceTransport();
+void TestAudioPlayer();
 
 } // namespace anyadance::tests

@@ -23,6 +23,8 @@ then **Play**.
 - A **PMX/PMD model** the motion targets. MMD models are third-party works with
   their own licenses, so you supply your own. Picking the model the dance was
   made for gives the best result.
+- Optional **BGM audio** in a Windows Media Foundation-supported format. The UI
+  file picker includes WAV, MP3, M4A, AAC, and WMA.
 
 ## How it works
 
@@ -75,11 +77,14 @@ position, so the avatar dances in place.
 
 ## Dialog
 
-| Field       | Meaning                                                              |
-|-------------|---------------------------------------------------------------------|
-| VMD motion  | The `.vmd` dance file.                                               |
-| Model       | The `.pmx`/`.pmd` model to solve against.                           |
-| Loop        | Repeat the dance when it ends (otherwise it holds the final pose).  |
+| Field                  | Meaning |
+|------------------------|---------|
+| VMD motion             | The `.vmd` dance file. |
+| Model                  | The `.pmx`/`.pmd` model to solve against. |
+| BGM audio              | Optional audio decoded by Windows Media Foundation. |
+| Audio start offset (s) | Audio start relative to motion frame zero. A negative value plays an intro first; a positive value delays the audio. |
+| Audio output           | The Windows playback endpoint used for BGM. The selection is saved in UI preferences. |
+| Loop                   | Repeat the combined motion/audio transport. |
 
 Everything else (target height `1.5 m`, playback speed, hand reach, solve frame
 rate) uses fixed defaults.
@@ -93,6 +98,13 @@ and reused on the next launch.
 **Play** stays disabled until a solve succeeds (and while one is running), then
 plays the solved dance. **Stop** returns to the T-pose. **Reset to T-Pose** also
 stops playback.
+
+Motion and BGM share one transport. Its start is the earlier of motion frame
+zero and the configured audio start; its end is the later of the last motion
+frame and the end of the audio. During an audio intro the avatar holds the first
+motion frame. During an audio outro it holds the last frame. **Loop** repeats
+this entire combined interval, so the intro/outro freezes are repeated on every
+cycle and the motion never loops independently underneath unfinished audio.
 
 ## Saving and loading clips (.nya)
 

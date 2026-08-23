@@ -136,6 +136,14 @@ void LoadPreferences(HWND hwnd) {
             std::string value;
             in >> std::quoted(value);
             CopyPreferenceString(g_app.danceMmdToolsPath, sizeof(g_app.danceMmdToolsPath), value);
+        } else if (key == "dance_audio_offset") {
+            in >> g_app.danceAudioOffset;
+            if (!std::isfinite(g_app.danceAudioOffset)) {
+                g_app.danceAudioOffset = 0.0f;
+            }
+            g_app.danceAudioOffset = std::clamp(g_app.danceAudioOffset, -3600.0f, 3600.0f);
+        } else if (key == "dance_audio_device") {
+            in >> std::quoted(g_app.danceAudioOutputDeviceId);
         } else if (key == "window") {
             int x = 100;
             int y = 100;
@@ -147,6 +155,13 @@ void LoadPreferences(HWND hwnd) {
             h = std::max(h, static_cast<int>(minWindow.cy));
             MoveWindow(hwnd, x, y, w, h, FALSE);
             EnsureMinimumClientArea(hwnd, MinClientWidth(), MinClientHeight());
+        }
+    }
+    if (!g_app.danceAudioOutputDeviceId.empty() && !g_app.danceAudio.OutputDevices().empty()) {
+        std::string error;
+        if (!g_app.danceAudio.SelectOutputDeviceById(g_app.danceAudioOutputDeviceId, error)) {
+            g_app.danceAudioOutputDeviceId.clear();
+            g_app.danceStatus = error;
         }
     }
 }
@@ -164,6 +179,14 @@ void SavePreferences(HWND hwnd) {
     out << "ui_mode " << UiModeCode(g_app.uiMode) << '\n';
     out << "dance_blender_path " << std::quoted(std::string(g_app.danceBlenderPath)) << '\n';
     out << "dance_mmd_tools_path " << std::quoted(std::string(g_app.danceMmdToolsPath)) << '\n';
+    out << "dance_audio_offset " << g_app.danceAudioOffset << '\n';
+    const int audioDevice = g_app.danceAudio.SelectedOutputDevice();
+    const auto& audioDevices = g_app.danceAudio.OutputDevices();
+    const std::string audioDeviceId =
+        audioDevice >= 0 && audioDevice < static_cast<int>(audioDevices.size())
+            ? audioDevices[static_cast<std::size_t>(audioDevice)].id
+            : g_app.danceAudioOutputDeviceId;
+    out << "dance_audio_device " << std::quoted(audioDeviceId) << '\n';
     out << "window " << rect.left << ' ' << rect.top << ' ' << (rect.right - rect.left) << ' ' << (rect.bottom - rect.top) << '\n';
 }
 
@@ -584,6 +607,15 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         &g_footerBannerHeight
     );
 
+    if (SUCCEEDED(comInit)) {
+        std::string audioError;
+        if (!g_app.danceAudio.Initialize(audioError)) {
+            g_app.danceStatus = audioError;
+        }
+    } else {
+        g_app.danceStatus = "Audio initialization requires COM.";
+    }
+
     LoadPreferences(hwnd);
     ShowWindow(hwnd, nCmdShow == 0 ? SW_SHOWDEFAULT : nCmdShow);
     UpdateWindow(hwnd);
@@ -678,6 +710,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     ReleaseMouseCapture();
     SavePreferences(hwnd);
     g_app.streamer.Stop();
+    g_app.danceAudio.Shutdown();
 
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();

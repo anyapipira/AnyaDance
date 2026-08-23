@@ -6,6 +6,8 @@
 
 [English](README.md) | **简体中文** | [日本語](README.ja.md)
 
+> **想直接使用 AnyaDance？** [从 GitHub Releases 下载预编译的 Windows 软件包](https://github.com/anyapipira/AnyaDance/releases)。除非你想参与开发或自行构建，否则无需克隆或编译此仓库。
+
 AnyaDance 是一个用于驱动与制作 VRChat 虚拟形象全身动作的 Windows 工具集——你可以手动摆姿势、实时驱动，或在其上播放 MMD 舞蹈。其核心是一个 SteamVR/OpenVR 虚拟设备驱动，外加一个向其推送数据的伴随程序（`AnyaDance.exe`）。驱动向 VRChat 全身追踪测试提供六个虚拟设备：
 
 - 头显（HMD）

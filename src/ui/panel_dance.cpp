@@ -380,9 +380,8 @@ void RenderDanceDialog(HWND hwnd) {
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(Tr(Text::DanceAudioOffset));
     ImGui::SameLine();
-    ImGui::SetCursorPosX(audioControlX);
     const float elapsedBeforeOffsetEdit = DanceTimelineElapsed();
-    ImGui::SetNextItemWidth(150.0f);
+    ImGui::SetNextItemWidth(120.0f);
     if (ImGui::InputFloat("##dance_audio_offset", &g_app.danceAudioOffset, 0.01f, 0.10f, "%.3f")) {
         g_app.danceAudioOffset = std::clamp(g_app.danceAudioOffset, -3600.0f, 3600.0f);
         if (g_app.dancePlaying) {
@@ -390,6 +389,16 @@ void RenderDanceDialog(HWND hwnd) {
         } else {
             RestartDanceTransportAtBeginning();
         }
+    }
+    ImGui::SameLine();
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(Tr(Text::DanceAudioVolume));
+    ImGui::SameLine();
+    int volumePercent = static_cast<int>(std::lround(g_app.danceAudioVolume * 100.0f));
+    ImGui::SetNextItemWidth(-1.0f);
+    if (ImGui::SliderInt("##dance_audio_volume", &volumePercent, 0, 100, "%d%%")) {
+        g_app.danceAudioVolume = static_cast<float>(volumePercent) / 100.0f;
+        g_app.danceAudio.SetVolume(g_app.danceAudioVolume);
     }
     ImGui::SetCursorPosX(audioControlX);
     ImGui::PushTextWrapPos(620.0f);

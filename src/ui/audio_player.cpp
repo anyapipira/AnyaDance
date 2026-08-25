@@ -102,6 +102,7 @@ struct AudioPlayer::Impl {
     std::vector<std::uint8_t> waveFormatBytes;
     std::vector<std::uint8_t> decodedAudio;
     double durationSeconds = 0.0;
+    float volume = 0.5f;
     std::uint64_t sourceStartFrame = 0;
     bool initialized = false;
     bool mediaFoundationStarted = false;
@@ -171,6 +172,11 @@ struct AudioPlayer::Impl {
         HRESULT hr = xaudio->CreateSourceVoice(&sourceVoice, format);
         if (FAILED(hr)) {
             sourceVoice = nullptr;
+            return false;
+        }
+        hr = sourceVoice->SetVolume(volume);
+        if (FAILED(hr)) {
+            DestroySourceVoice();
             return false;
         }
 
@@ -484,6 +490,17 @@ bool AudioPlayer::HasAudio() const {
 
 double AudioPlayer::DurationSeconds() const {
     return m_impl->durationSeconds;
+}
+
+void AudioPlayer::SetVolume(float volume) {
+    m_impl->volume = std::isfinite(volume) ? std::clamp(volume, 0.0f, 1.0f) : 0.5f;
+    if (m_impl->sourceVoice) {
+        m_impl->sourceVoice->SetVolume(m_impl->volume);
+    }
+}
+
+float AudioPlayer::Volume() const {
+    return m_impl->volume;
 }
 
 void AudioPlayer::Synchronize(double expectedSeconds, bool shouldPlay) {

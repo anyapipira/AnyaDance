@@ -99,6 +99,7 @@ enum class Text : std::size_t {
     DanceMmdToolsPath,
     DanceAudio,
     DanceAudioOffset,
+    DanceAudioVolume,
     DanceAudioOffsetHelp,
     DanceAudioOutput,
     DanceAudioRefresh,

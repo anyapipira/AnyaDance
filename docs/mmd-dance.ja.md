@@ -47,6 +47,7 @@ UI のメイン操作領域の右列にある **Dance (MMD)** ボタンから利
 | Model | 計算に使用する `.pmx`／`.pmd` モデル。 |
 | BGM audio | Windows Media Foundation でデコードする任意の音声。 |
 | Audio start offset (s) | モーションのフレーム 0 に対する音声開始時刻。負の値では先にイントロを再生し、正の値では音声を遅らせます。 |
+| Volume | BGM の再生音量を 0%～100% で調整します。既定値は 50% で、UI 設定に保存されます。 |
 | Audio output | BGM を出力する Windows 再生エンドポイント。選択内容は UI 設定へ保存されます。 |
 | Loop | モーションと音声を合わせた時間範囲全体を繰り返します。 |
 

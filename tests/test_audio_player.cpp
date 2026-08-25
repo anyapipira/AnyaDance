@@ -59,6 +59,14 @@ void TestAudioPlayer() {
     const HRESULT com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     ui::AudioPlayer player;
     std::string error;
+    EXPECT_NEAR(player.Volume(), 0.5, 0.0001);
+    player.SetVolume(0.75f);
+    EXPECT_NEAR(player.Volume(), 0.75, 0.0001);
+    player.SetVolume(-1.0f);
+    EXPECT_NEAR(player.Volume(), 0.0, 0.0001);
+    player.SetVolume(2.0f);
+    EXPECT_NEAR(player.Volume(), 1.0, 0.0001);
+    player.SetVolume(0.5f);
     // GitHub-hosted runners may have no active render endpoint. In that case the
     // endpoint-dependent runtime portion is intentionally skipped, but the full
     // Media Foundation/XAudio2 backend is still compiled and linked by this test.

@@ -140,6 +140,7 @@ const char* const kStrings[kTextCount][kLanguageCount] = {
     /* DanceMmdToolsPath     */ {"MMD Tools path", u8"MMD Tools 路径", u8"MMD Tools のパス"},
     /* DanceAudio            */ {"BGM audio", u8"BGM 音频", u8"BGM 音声"},
     /* DanceAudioOffset      */ {"Audio start offset (s)", u8"音频开始偏移（秒）", u8"音声開始オフセット（秒）"},
+    /* DanceAudioVolume      */ {"Volume", u8"音量", u8"音量"},
     /* DanceAudioOffsetHelp  */ {"Negative values play an intro before frame zero; positive values start audio after the motion.", u8"负值会在第零帧前播放前奏；正值会在动作开始后播放音频。", u8"負の値ではフレーム0より前にイントロを再生し、正の値ではモーション開始後に音声を開始します。"},
     /* DanceAudioOutput      */ {"Audio output", u8"音频输出", u8"音声出力"},
     /* DanceAudioRefresh     */ {"Refresh devices", u8"刷新设备", u8"デバイスを更新"},

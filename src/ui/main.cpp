@@ -142,6 +142,12 @@ void LoadPreferences(HWND hwnd) {
                 g_app.danceAudioOffset = 0.0f;
             }
             g_app.danceAudioOffset = std::clamp(g_app.danceAudioOffset, -3600.0f, 3600.0f);
+        } else if (key == "dance_audio_volume") {
+            in >> g_app.danceAudioVolume;
+            if (!std::isfinite(g_app.danceAudioVolume)) {
+                g_app.danceAudioVolume = 0.5f;
+            }
+            g_app.danceAudioVolume = std::clamp(g_app.danceAudioVolume, 0.0f, 1.0f);
         } else if (key == "dance_audio_device") {
             in >> std::quoted(g_app.danceAudioOutputDeviceId);
         } else if (key == "window") {
@@ -157,6 +163,7 @@ void LoadPreferences(HWND hwnd) {
             EnsureMinimumClientArea(hwnd, MinClientWidth(), MinClientHeight());
         }
     }
+    g_app.danceAudio.SetVolume(g_app.danceAudioVolume);
     if (!g_app.danceAudioOutputDeviceId.empty() && !g_app.danceAudio.OutputDevices().empty()) {
         std::string error;
         if (!g_app.danceAudio.SelectOutputDeviceById(g_app.danceAudioOutputDeviceId, error)) {
@@ -180,6 +187,7 @@ void SavePreferences(HWND hwnd) {
     out << "dance_blender_path " << std::quoted(std::string(g_app.danceBlenderPath)) << '\n';
     out << "dance_mmd_tools_path " << std::quoted(std::string(g_app.danceMmdToolsPath)) << '\n';
     out << "dance_audio_offset " << g_app.danceAudioOffset << '\n';
+    out << "dance_audio_volume " << g_app.danceAudioVolume << '\n';
     const int audioDevice = g_app.danceAudio.SelectedOutputDevice();
     const auto& audioDevices = g_app.danceAudio.OutputDevices();
     const std::string audioDeviceId =

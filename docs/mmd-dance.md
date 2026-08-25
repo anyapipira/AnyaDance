@@ -83,6 +83,7 @@ position, so the avatar dances in place.
 | Model                  | The `.pmx`/`.pmd` model to solve against. |
 | BGM audio              | Optional audio decoded by Windows Media Foundation. |
 | Audio start offset (s) | Audio start relative to motion frame zero. A negative value plays an intro first; a positive value delays the audio. |
+| Volume                 | BGM playback level from 0% to 100%. Defaults to 50% and is saved in UI preferences. |
 | Audio output           | The Windows playback endpoint used for BGM. The selection is saved in UI preferences. |
 | Loop                   | Repeat the combined motion/audio transport. |
 

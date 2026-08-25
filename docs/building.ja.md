@@ -9,6 +9,13 @@
 - CMake 3.22 以降
 - 実行時テスト用の SteamVR
 
+BGM バックエンドは、Windows と Windows SDK が提供する Windows Media Foundation、
+Core Audio（MMDevice）、XAudio2 2.9 を使用します。CMake がこれらをダウンロードする
+ことはなく、AnyaDance もそれらの DLL を同梱しません。Windows 10 以降にはランタイム
+コンポーネントが含まれ、Visual Studio/CMake が選択する Windows SDK からヘッダーと
+インポートライブラリが提供されるため、音声用 SDK や再頒布可能パッケージを別途
+インストールする必要はありません。
+
 ## 標準ビルド
 
 ```powershell

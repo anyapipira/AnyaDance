@@ -35,6 +35,8 @@ public:
     void Unload();
     bool HasAudio() const;
     double DurationSeconds() const;
+    void SetVolume(float volume);
+    float Volume() const;
 
     // Keep playback aligned to an external clock. Re-seeks only when starting,
     // looping, changing devices, or drifting materially from expectedSeconds.

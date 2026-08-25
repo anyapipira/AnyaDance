@@ -9,6 +9,13 @@
 - CMake 3.22 or newer
 - SteamVR for runtime testing
 
+The BGM backend uses Windows Media Foundation, Core Audio (MMDevice), and
+XAudio2 2.9 supplied by Windows and the Windows SDK. CMake does not download
+them and AnyaDance does not bundle their DLLs. Windows 10 or newer supplies the
+runtime components, while the Windows SDK selected by Visual Studio/CMake
+supplies the headers and import libraries, so no separate audio SDK or
+redistributable is required.
+
 ## Default Build
 
 ```powershell

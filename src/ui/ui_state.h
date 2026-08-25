@@ -426,6 +426,7 @@ struct AppState {
     float danceHandReach = 1.22f;
     bool danceLoop = true;
     float danceAudioOffset = 0.0f;  // audio start time relative to motion frame zero
+    float danceAudioVolume = 0.5f;
     std::string danceAudioOutputDeviceId;
     AudioPlayer danceAudio;
     std::string danceStatus;

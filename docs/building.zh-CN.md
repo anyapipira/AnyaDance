@@ -9,6 +9,11 @@
 - CMake 3.22 或更高版本
 - 用于运行时测试的 SteamVR
 
+BGM 后端使用 Windows 和 Windows SDK 提供的 Windows Media Foundation、Core Audio
+（MMDevice）与 XAudio2 2.9。CMake 不会下载它们，AnyaDance 也不会打包它们的 DLL。
+Windows 10 或更高版本提供运行时组件，Visual Studio/CMake 选用的 Windows SDK
+提供头文件与导入库，因此无需另行安装音频 SDK 或可再发行组件。
+
 ## 默认构建
 
 ```powershell
